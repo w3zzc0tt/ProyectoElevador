@@ -35,8 +35,11 @@ pisos_posiciones = [
     (385, 315),  # Piso 1
     (385, 270),  # Piso 2
     (385, 150),  # Piso 3
-    (385, 90),  # Piso 4
+    (385, 90),   # Piso 4
 ]
+
+# Personas saliendo visualmente
+personas_saliendo = []  # Lista de diccionarios con {'sprite', 'x', 'y', 'direccion', 'velocidad'}
 
 def importar_desde_main(modulo_main):
     global elevador, volver_al_menu_principal, COLORES, fuente_pequena
@@ -83,7 +86,7 @@ def cargar_sprites():
 
 def actualizar_ascensor():
     global piso_actual, tiempo_ultimo_piso, esperando_en_piso
-    global personas_en_ascensor, subiendo, bajando
+    global personas_en_ascensor, subiendo, bajando, personas_saliendo
 
     ahora = pygame.time.get_ticks()
 
@@ -98,12 +101,26 @@ def actualizar_ascensor():
                 if piso_actual < pisos_totales:
                     if piso_actual > 0:
                         cantidad = random.randint(1, 3)
+                        personas_a_bajar = []
                         for _ in range(min(cantidad, len(personas_en_ascensor))):
-                            personas_en_ascensor.pop(0)
+                            persona = personas_en_ascensor.pop(0)
+                            persona.cargar_imagen()
+                            personas_a_bajar.append(persona)
+
+                        direccion = "izquierda" if piso_actual in [1, 3] else "derecha"
+                        x_inicio, y_inicio = pisos_posiciones[piso_actual]
+                        for idx, persona in enumerate(personas_a_bajar):
+                            offset_x = idx * 70 if direccion == "derecha" else -idx * 70
+                            personas_saliendo.append({
+                                "sprite": persona.imagen,
+                                "x": x_inicio + 10 + offset_x,
+                                "y": y_inicio + 20,
+                                "direccion": direccion,
+                                "velocidad": 2
+                            })
                     esperando_en_piso = True
                     tiempo_ultimo_piso = ahora
                 else:
-                    # Último piso: descargar todas las personas
                     personas_en_ascensor.clear()
                     subiendo = False
                     bajando = True
@@ -141,3 +158,16 @@ def dibujar_pisos(screen):
     personas_txt = fuente.render(f"Personas restantes: {len(personas_en_ascensor)}", True, (255, 255, 255))
     screen.blit(piso_txt, (20, 20))
     screen.blit(personas_txt, (20, 50))
+
+    # Dibujar personas saliendo visualmente
+    for persona in personas_saliendo[:]:
+        if persona["sprite"]:
+            screen.blit(persona["sprite"], (persona["x"], persona["y"]))
+            if persona["direccion"] == "izquierda":
+                persona["x"] -= persona["velocidad"]
+                if persona["x"] <= 0:
+                    personas_saliendo.remove(persona)
+            else:
+                persona["x"] += persona["velocidad"]
+                if persona["x"] + 60 >= screen.get_width():
+                    personas_saliendo.remove(persona)
