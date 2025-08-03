@@ -5,6 +5,8 @@ import random
 import time
 from enum import Enum
 from threading import Thread, Event
+from logica_ascensor import dibujar_pisos, actualizar_ascensor, iniciar_ascensor
+
 
 pygame.init()
 
@@ -211,6 +213,7 @@ MENU_PRINCIPAL = 0
 MENU_DIFICULTAD = 1
 MENU_CONFIG = 2
 MENU_SALIR = 3
+ASCENSOR = 5
 # Eliminado MENU_JUEGO y MENU_PAUSA ya que no se usan
 LOBBY = 4  # Nuevo estado para el lobby
 estado_actual = MENU_PRINCIPAL
@@ -448,6 +451,18 @@ def iniciar_lobby():
     elevador = Elevador(9)
     mostrar_mensaje_temporal(f"Lobby cargado - {dificultad_actual.name}", "exito")
 
+
+def iniciar_ascensor_desde_main():
+    import logica_ascensor
+    logica_ascensor.importar_desde_main(sys.modules[__name__])  # Pasa todo lo necesario
+    logica_ascensor.iniciar_ascensor()
+
+
+def iniciar_entrega_ascensor():
+    global estado_actual
+    iniciar_ascensor_desde_main()
+    estado_actual = ASCENSOR
+
 def manejar_seleccion():
     global estado_actual, opcion_seleccionada, dificultad_actual
     if estado_actual == MENU_PRINCIPAL:
@@ -536,24 +551,27 @@ def dibujar_interfaz():
     piso_txt = fuente_led.render(str(opcion_seleccionada + 1), True, COLORES["verde_led"])
     screen.blit(piso_txt, (display_rect.centerx - piso_txt.get_width() // 2, display_rect.centery - piso_txt.get_height() // 2))
     # Opciones del menú
-    opciones = menus[estado_actual]
-    altura_opcion = 60 if len(opciones) == 4 else 70
-    for i, opcion in enumerate(opciones):
-        y = panel_top + 120 + i * altura_opcion
-        rect_opcion = pygame.Rect(panel_left + 40, y, panel_width - 80, 50)
-        if i == opcion_seleccionada:
-            pygame.draw.rect(screen, COLORES["opcion_activa"], rect_opcion, border_radius=10)
-            pygame.draw.rect(screen, COLORES["borde_opcion"], rect_opcion, 2, border_radius=10)
-        else:
-            pygame.draw.rect(screen, COLORES["opcion_inactiva"], rect_opcion, border_radius=10)
-        color_texto = COLORES["texto_activo"] if i == opcion_seleccionada else COLORES["texto_inactivo"]
-        texto = fuente.render(opcion, True, color_texto)
-        screen.blit(texto, (rect_opcion.x + 50, rect_opcion.centery - texto.get_height() // 2))
-        led_rect = pygame.Rect(rect_opcion.x + 15, rect_opcion.centery - 10, 20, 20)
-        pygame.draw.rect(screen, (20, 20, 20), led_rect, border_radius=10)
-        if i == opcion_seleccionada:
-            pygame.draw.rect(screen, COLORES["verde_led"], led_rect, border_radius=10)
-            pygame.draw.rect(screen, COLORES["verde_led_claro"], led_rect, 2, border_radius=10)
+    # Opciones del menú (solo si el estado actual está en menus)
+    if estado_actual in menus:
+        opciones = menus[estado_actual]
+        altura_opcion = 60 if len(opciones) == 4 else 70
+        for i, opcion in enumerate(opciones):
+            y = panel_top + 120 + i * altura_opcion
+            rect_opcion = pygame.Rect(panel_left + 40, y, panel_width - 80, 50)
+            if i == opcion_seleccionada:
+                pygame.draw.rect(screen, COLORES["opcion_activa"], rect_opcion, border_radius=10)
+                pygame.draw.rect(screen, COLORES["borde_opcion"], rect_opcion, 2, border_radius=10)
+            else:
+                pygame.draw.rect(screen, COLORES["opcion_inactiva"], rect_opcion, border_radius=10)
+            color_texto = COLORES["texto_activo"] if i == opcion_seleccionada else COLORES["texto_inactivo"]
+            texto = fuente.render(opcion, True, color_texto)
+            screen.blit(texto, (rect_opcion.x + 50, rect_opcion.centery - texto.get_height() // 2))
+            led_rect = pygame.Rect(rect_opcion.x + 15, rect_opcion.centery - 10, 20, 20)
+            pygame.draw.rect(screen, (20, 20, 20), led_rect, border_radius=10)
+            if i == opcion_seleccionada:
+                pygame.draw.rect(screen, COLORES["verde_led"], led_rect, border_radius=10)
+                pygame.draw.rect(screen, COLORES["verde_led_claro"], led_rect, 2, border_radius=10)
+
     # Ascensor (indicador visual)
     pygame.draw.rect(screen, COLORES["sombra_ascensor"], (ascensor_x - 6, ascensor_y - 6, ascensor_width + 12, ascensor_height + 12), border_radius=8)
     pygame.draw.rect(screen, ascensor_color, (ascensor_x, ascensor_y, ascensor_width, ascensor_height), border_radius=6)
@@ -593,8 +611,20 @@ while True:
                     if num < len(menus[estado_actual]):
                         opcion_seleccionada = num
                         manejar_seleccion()
+
+            elif event.key == pygame.K_SPACE:
+                if estado_actual == LOBBY:
+                    iniciar_ascensor({
+                        'elevador': elevador,
+                        'volver_al_menu_principal': volver_al_menu_principal,
+                        'COLORES': COLORES,
+                        'fuente_pequena': fuente_pequena
+                    })
+                    estado_actual = ASCENSOR
+
+
         elif event.type == pygame.MOUSEMOTION:
-            if estado_actual != LOBBY: # Solo en menús
+            if estado_actual in menus:  # Solo si el estado tiene menú
                 mouse_x, mouse_y = event.pos
                 opciones = menus[estado_actual]
                 altura_opcion = 60 if len(opciones) == 4 else 70
@@ -602,16 +632,29 @@ while True:
                     y = panel_top + 120 + i * altura_opcion
                     if panel_left + 40 < mouse_x < panel_left + panel_width - 40 and y < mouse_y < y + 50:
                         opcion_seleccionada = i
+
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if estado_actual != LOBBY: # Solo en menús
+            if estado_actual in menus:  # Solo si el estado tiene menú
                 if event.button == 1:
                     manejar_seleccion()
-                    
-    # Animación del ascensor (solo en menús)
-    if estado_actual != LOBBY:
+
+        elif event.type == pygame.USEREVENT + 10:
+            estado_actual = LOBBY
+            pygame.time.set_timer(pygame.USEREVENT + 10, 0)  # Detener temporizador
+
+                
+
+    # Actualizar ascensor
+    if estado_actual == ASCENSOR:
+        actualizar_ascensor()
+        dibujar_pisos(screen)
+                  
+    # Animación del ascensor (solo en menús que realmente tienen opciones)
+    if estado_actual in menus:
         altura_opcion = 60 if len(menus[estado_actual]) == 4 else 70
         ascensor_target_y = panel_top + 120 + opcion_seleccionada * altura_opcion + 10
         ascensor_y += (ascensor_target_y - ascensor_y) * 0.2
+
     # Limpiar mensaje temporal si ha expirado
     if tiempo_mensaje > 0 and time.time() > tiempo_mensaje:
         mensaje_temporal = ""
