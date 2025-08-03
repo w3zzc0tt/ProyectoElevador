@@ -31,11 +31,11 @@ fuente_pequena = None
 
 # Posiciones manuales de cada piso (incluye lobby)
 pisos_posiciones = [
-    (360, 520),  # Lobby (0)
-    (360, 410),  # Piso 1
-    (360, 325),  # Piso 2
-    (360, 205),  # Piso 3
-    (360, 115),  # Piso 4
+    (385, 485),  # Lobby (0)
+    (385, 315),  # Piso 1
+    (385, 270),  # Piso 2
+    (385, 150),  # Piso 3
+    (385, 90),  # Piso 4
 ]
 
 def importar_desde_main(modulo_main):

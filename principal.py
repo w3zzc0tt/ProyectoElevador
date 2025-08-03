@@ -1,7 +1,9 @@
 import pygame
 from menu_principal import manejar_menu
 import lobby
-from elevador import Elevador  # Asegúrate de que este archivo y clase existen
+import logica_ascensor  # <-- Lógica del ascensor
+from elevador import Elevador
+import sys
 
 pygame.init()
 
@@ -9,12 +11,10 @@ ANCHO, ALTO = 900, 600
 screen = pygame.display.set_mode((ANCHO, ALTO))
 pygame.display.set_caption("Menú Principal")
 
-# Fuentes
 fuente = pygame.font.SysFont("Courier New", 32, bold=True)
 fuente_led = pygame.font.SysFont("Courier New", 48, bold=True)
 fuente_pequena = pygame.font.SysFont("Courier New", 22, bold=True)
 fuente_mediana = pygame.font.SysFont("Courier New", 28, bold=True)
-
 clock = pygame.time.Clock()
 
 COLORES = {
@@ -38,22 +38,19 @@ COLORES = {
 panel_surface_oscura = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
 panel_surface_oscura.fill((0, 0, 0, 140))
 
-# Mostrar menú
+def mostrar_mensaje_temporal(texto, tipo):
+    print(f"[{tipo.upper()}] {texto}")  # Puedes reemplazar con visual
+
+def volver_al_menu_principal():
+    print("Volviendo al menú...")
+
+# Inicializar ascensor y recursos
 accion = manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCHO, ALTO, clock)
 
 if accion in ["FACIL", "NORMAL", "DIFICIL"]:
-    # Inicializar elevador
     elevador = Elevador()
-
-    # Cargar fondo del lobby
     fondo_lobby = pygame.image.load("assets/lobby.png").convert()
     fondo_lobby = pygame.transform.scale(fondo_lobby, (ANCHO, ALTO))
-
-    def mostrar_mensaje_temporal(texto, tipo):
-        print(f"[{tipo.upper()}] {texto}")  # Aquí puedes implementar algo más visual si quieres
-
-    def volver_al_menu_principal():
-        print("Volviendo al menú...")  # A implementar si deseas navegación
 
     contexto = {
         "screen": screen,
@@ -77,5 +74,25 @@ if accion in ["FACIL", "NORMAL", "DIFICIL"]:
     }
 
     lobby.iniciar_lobby(contexto)
+
+    # Importar lógica del ascensor y esperar ESPACIO
+    logica_ascensor.importar_desde_main(sys.modules[__name__])
+
+    ejecutando = True
+    while ejecutando:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                ejecutando = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    # Iniciar ascensor con contexto actual
+                    logica_ascensor.iniciar_ascensor(contexto)
+
+        if logica_ascensor.sprite_cargado:
+            logica_ascensor.actualizar_ascensor()
+            logica_ascensor.dibujar_pisos(screen)
+
+        pygame.display.flip()
+        clock.tick(60)
 else:
     print(f"Acción cancelada o no reconocida: {accion}")

@@ -118,6 +118,30 @@ def bucle_lobby():
                     mover_seleccion(1)
                 elif event.key == pygame.K_LEFT:
                     mover_seleccion(-1)
+                elif event.key == pygame.K_SPACE:
+                    import logica_ascensor
+                    logica_ascensor.iniciar_ascensor({
+                        "elevador": elevador,
+                        "volver_al_menu_principal": volver_al_menu_principal,
+                        "COLORES": COLORES,
+                        "fuente_pequena": fuente_pequena,
+                    })
+
+                    # Bucle de animación del ascensor
+                    en_animacion = True
+                    while en_animacion:
+                        for ev in pygame.event.get():
+                            if ev.type == pygame.QUIT:
+                                pygame.quit()
+                                return
+                            elif ev.type == pygame.USEREVENT + 10:
+                                en_animacion = False  # Regresa al lobby
+
+                        screen.fill((0, 0, 0))
+                        logica_ascensor.actualizar_ascensor()
+                        logica_ascensor.dibujar_pisos(screen)
+                        pygame.display.flip()
+                        clock.tick(60)
 
         screen.fill((0, 0, 0))
         dibujar_lobby()
