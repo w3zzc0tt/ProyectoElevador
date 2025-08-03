@@ -38,6 +38,13 @@ pisos_posiciones = [
     (360, 115),  # Piso 4
 ]
 
+def importar_desde_main(modulo_main):
+    global elevador, volver_al_menu_principal, COLORES, fuente_pequena
+    elevador = getattr(modulo_main, 'elevador', None)
+    volver_al_menu_principal = getattr(modulo_main, 'volver_al_menu_principal', None)
+    COLORES = getattr(modulo_main, 'COLORES', None)
+    fuente_pequena = getattr(modulo_main, 'fuente_pequena', None)
+
 def iniciar_ascensor(contexto):
     global elevador, volver_al_menu_principal, COLORES, fuente_pequena
     global personas_en_ascensor, piso_actual, subiendo, bajando

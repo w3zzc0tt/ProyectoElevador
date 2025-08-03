@@ -454,8 +454,14 @@ def iniciar_lobby():
 
 def iniciar_ascensor_desde_main():
     import logica_ascensor
-    logica_ascensor.importar_desde_main(sys.modules[__name__])  # Pasa todo lo necesario
-    logica_ascensor.iniciar_ascensor()
+    logica_ascensor.importar_desde_main(sys.modules[__name__])  # Pasa los valores globales
+    contexto = {
+        'elevador': elevador,
+        'volver_al_menu_principal': volver_al_menu_principal,
+        'COLORES': COLORES,
+        'fuente_pequena': fuente_pequena
+    }
+    logica_ascensor.iniciar_ascensor(contexto)
 
 
 def iniciar_entrega_ascensor():
@@ -614,13 +620,11 @@ while True:
 
             elif event.key == pygame.K_SPACE:
                 if estado_actual == LOBBY:
-                    iniciar_ascensor({
-                        'elevador': elevador,
-                        'volver_al_menu_principal': volver_al_menu_principal,
-                        'COLORES': COLORES,
-                        'fuente_pequena': fuente_pequena
-                    })
-                    estado_actual = ASCENSOR
+                    if elevador.area_ocupada == elevador.capacidad_area:
+                        iniciar_ascensor_desde_main()
+                        estado_actual = ASCENSOR
+                    else:
+                        mostrar_mensaje_temporal("El ascensor debe estar lleno para iniciar", "error")
 
 
         elif event.type == pygame.MOUSEMOTION:
