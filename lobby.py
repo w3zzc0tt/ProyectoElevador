@@ -103,6 +103,10 @@ def iniciar_animacion_ascensor():
         "volver_al_menu_principal": volver_al_menu_principal,
         "COLORES": COLORES,
         "fuente_pequena": fuente_pequena,
+        "PersonaDiscapacitada": PersonaDiscapacitada,
+        "PersonaObesa": PersonaObesa,
+        "PersonaTrabajador": PersonaTrabajador,
+        "PersonaCliente": PersonaCliente
     })
     estado_juego["modo"] = "ascensor"
     print("🎬 CAMBIO A MODO ASCENSOR")
