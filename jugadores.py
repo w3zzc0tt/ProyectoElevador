@@ -1,4 +1,5 @@
 import pygame
+from temporizadores import TemporizadorTrabajador
 
 class PersonaBase:
     def __init__(self, nombre, espacio, imagen_path):
@@ -26,6 +27,16 @@ class PersonaObesa(PersonaBase):
 class PersonaTrabajador(PersonaBase):
     def __init__(self):
         super().__init__("Trabajador", 1, "assets/trabajador1.png")
+        self.temporizador = TemporizadorTrabajador()
+        
+    def iniciar_temporizador(self):
+        self.temporizador.iniciar()
+        
+    def actualizar_temporizador(self):
+        return self.temporizador.actualizar()
+    
+    def obtener_porcentaje_temporizador(self):
+        return self.temporizador.obtener_porcentaje()
 
 class PersonaCliente(PersonaBase):
     def __init__(self):

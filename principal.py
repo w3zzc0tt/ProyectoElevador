@@ -2,7 +2,7 @@ import pygame
 from menu_principal import manejar_menu
 import lobby
 from elevador import Elevador
-
+from temporizadores import TemporizadorGameplay
 pygame.init()
 
 ANCHO, ALTO = 900, 600
@@ -52,6 +52,9 @@ if accion in ["FACIL", "NORMAL", "DIFICIL"]:
     fondo_lobby = pygame.image.load("assets/lobby.png").convert()
     fondo_lobby = pygame.transform.scale(fondo_lobby, (ANCHO, ALTO))
 
+    temporizador_gameplay = TemporizadorGameplay()  # ← Agrega esta línea antes del diccionario
+
+
     contexto = {
         "screen": screen,
         "ANCHO": ANCHO,
@@ -64,6 +67,7 @@ if accion in ["FACIL", "NORMAL", "DIFICIL"]:
         "clock": clock,
         "panel_surface_oscura": panel_surface_oscura,
         "dificultad_actual": accion,
+        "temporizador_gameplay": temporizador_gameplay,
         "elevador": elevador,
         "fondo_lobby": fondo_lobby,
         "fondo_pos_x_lobby": 0,

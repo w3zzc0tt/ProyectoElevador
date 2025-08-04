@@ -29,6 +29,13 @@ puntos = 0  # Nueva variable para el sistema de puntaje
 mensaje_temporal = ""
 tiempo_mensaje = 0
 
+# Variables de temporizadores
+temporizador_gameplay = None
+gameplay_timer_total = 210  # 3.5 minutos = 210 segundos
+gameplay_timer_current = 210
+gameplay_timer_activo = False
+gameplay_timer_inicio = 0
+
 # 🎯 ZONA EDITABLE DE PERSPECTIVA
 Y_PISO_MIN = 450
 Y_PISO_MAX = 500
@@ -42,7 +49,11 @@ def reiniciar_puntaje():
 def iniciar_lobby(contexto):
     global screen, ANCHO, ALTO, COLORES, fuente_pequena, fuente_mediana, elevador
     global fondo_lobby, fondo_pos_x_lobby, fondo_pos_y_lobby
-    global volver_al_menu_principal
+    global volver_al_menu_principal, temporizador_gameplay
+
+    temporizador_gameplay = contexto.get('temporizador_gameplay')
+    if temporizador_gameplay:
+        temporizador_gameplay.iniciar()
 
     screen = contexto['screen']
     ANCHO = contexto['ANCHO']
@@ -81,6 +92,9 @@ def generar_personas_lobby():
         if isinstance(p, PersonaObesa):
             obesos += 1
         p.cargar_imagen()
+        # Iniciar temporizador si es trabajador
+        if isinstance(p, PersonaTrabajador):
+            p.iniciar_temporizador()
         personas.append(p)
 
     return personas
@@ -174,8 +188,15 @@ def bucle_lobby():
                     estado_juego["modo"] = "lobby"
 
         if estado_juego["modo"] == "lobby":
-            screen.fill((0, 0, 0))
-            dibujar_lobby()
+            if temporizador_gameplay:
+                terminado = temporizador_gameplay.actualizar()
+                if terminado:
+                    mostrar_mensaje_en_pantalla("¡Tiempo agotado! Fin del juego.", 5)
+                    pygame.time.wait(2000)
+                    volver_al_menu_principal()
+                    ejecutando = False
+                screen.fill((0, 0, 0))
+                dibujar_lobby()
         elif estado_juego["modo"] == "ascensor":
             screen.fill((0, 0, 0))
             logica_ascensor.actualizar_ascensor()
@@ -187,7 +208,19 @@ def bucle_lobby():
 def dibujar_lobby():
     if fondo_lobby:
         screen.blit(fondo_lobby, (fondo_pos_x_lobby, fondo_pos_y_lobby))
-
+    if temporizador_gameplay:
+        temporizador_gameplay.dibujar_temporizador_principal(
+            screen, fuente_mediana, COLORES, ANCHO
+            )
+        
+    for i, (x, y) in enumerate(posiciones_personas_lobby):
+        if i < len(personas_lobby):
+            persona = personas_lobby[i]
+            if hasattr(persona, "temporizador"):
+                persona.temporizador.dibujar_barra(
+                    screen, x, y + 62, 60, 6, COLORES)
+                persona.temporizador.actualizar()
+        
     for i, (x, y) in enumerate(posiciones_personas_lobby):
         if i < len(personas_lobby):
             persona = personas_lobby[i]
