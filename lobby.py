@@ -25,11 +25,19 @@ posiciones_personas_lobby = []
 persona_seleccionada_lobby = 0
 mensaje_temporal = ""
 tiempo_mensaje = 0
+puntos = 0  # Nueva variable para el sistema de puntaje
+mensaje_temporal = ""
+tiempo_mensaje = 0
 
 # 🎯 ZONA EDITABLE DE PERSPECTIVA
 Y_PISO_MIN = 450
 Y_PISO_MAX = 500
 SEPARACION_MINIMA = 35
+
+def reiniciar_puntaje():
+    """Reinicia el puntaje al iniciar un nuevo juego"""
+    global puntos
+    puntos = 0
 
 def iniciar_lobby(contexto):
     global screen, ANCHO, ALTO, COLORES, fuente_pequena, fuente_mediana, elevador
@@ -52,6 +60,10 @@ def iniciar_lobby(contexto):
     volver_al_menu_principal = contexto['volver_al_menu_principal']
 
     global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
+    
+    # Reiniciar el puntaje al iniciar un nuevo lobby
+    reiniciar_puntaje()
+    
     personas_lobby = generar_personas_lobby()
     posiciones_personas_lobby = distribuir_personas_lobby(personas_lobby)
     persona_seleccionada_lobby = 0
@@ -98,6 +110,26 @@ def distribuir_personas_lobby(personas):
     return posiciones
 
 def iniciar_animacion_ascensor():
+    # Verificar si el elevador tiene personas (si hay una ronda en curso)
+    if elevador.personas_dentro:
+        # Verificar si hay AL MENOS UN discapacitado en el elevador
+        hay_discapacitado = False
+        for persona in elevador.personas_dentro:
+            # Verificar de múltiples maneras para asegurar compatibilidad
+            if hasattr(persona, 'tipo') and persona.tipo == "Discapacitado":
+                hay_discapacitado = True
+                break
+            elif isinstance(persona, PersonaDiscapacitada):
+                hay_discapacitado = True
+                break
+        
+        # Aplicar penalización SOLO si NO hay ningún discapacitado en el elevador
+        if not hay_discapacitado:
+            global puntos
+            puntos -= 5
+            mostrar_mensaje_en_pantalla("Penalización: No se subió ningún discapacitado (-5)", 3)
+    
+    # Continuar con la animación del ascensor
     logica_ascensor.iniciar_ascensor({
         "elevador": elevador,
         "volver_al_menu_principal": volver_al_menu_principal,
@@ -189,19 +221,63 @@ def mover_seleccion(delta):
     persona_seleccionada_lobby = max(0, min(len(personas_lobby) - 1, persona_seleccionada_lobby + delta))
 
 def seleccionar():
-    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
+    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby, puntos
+    
     if not personas_lobby:
         return
+        
+    # Asegurar que el índice de selección esté dentro del rango válido
+    if persona_seleccionada_lobby >= len(personas_lobby):
+        persona_seleccionada_lobby = max(0, len(personas_lobby) - 1)
+        if not personas_lobby:  # Si no hay personas después del ajuste
+            return
+            
     persona = personas_lobby[persona_seleccionada_lobby]
+    
+    # Verificar si puede entrar al elevador
     if elevador.puede_entrar(persona):
+        # Agregar persona al elevador
         elevador.entrar_persona(persona)
+        
+        # Remover la persona seleccionada del lobby
         personas_lobby.pop(persona_seleccionada_lobby)
         posiciones_personas_lobby.pop(persona_seleccionada_lobby)
-        if persona_seleccionada_lobby >= len(personas_lobby):
-            persona_seleccionada_lobby = max(0, len(personas_lobby) - 1)
-        mostrar_mensaje_en_pantalla(f"{persona.nombre} subió al elevador")
+        
+        # Ajustar índice de selección
+        if personas_lobby:  # Solo ajustar si aún hay personas
+            persona_seleccionada_lobby = min(persona_seleccionada_lobby, len(personas_lobby) - 1)
+        else:
+            persona_seleccionada_lobby = 0
+        
+        # Calcular puntos según el tipo de persona
+        mensaje = f"{getattr(persona, 'nombre', 'Persona')} subió al elevador"
+        puntos_anteriores = puntos
+        if isinstance(persona, PersonaCliente):
+            puntos += 1
+            mensaje += " (+1)"
+        elif isinstance(persona, PersonaTrabajador):
+            puntos += 2
+            mensaje += " (+2)"
+        elif isinstance(persona, PersonaObesa):
+            puntos += 3
+            mensaje += " (+3)"
+        elif isinstance(persona, PersonaDiscapacitada):
+            puntos += 4
+            mensaje += " (+4)"
+        else:
+            # Tipo de persona desconocido, asignar 1 punto por defecto
+            puntos += 1
+            mensaje += " (+1)"
+        
+        # Limitar el puntaje máximo a 100
+        if puntos > 100:
+            puntos = 100
+        
+        # Mostrar mensaje con el puntaje actual
+        mensaje += f" | Puntaje: {puntos}"
+        mostrar_mensaje_en_pantalla(mensaje, 3)
     else:
-        mostrar_mensaje_en_pantalla("Sin espacio suficiente en el elevador")
+        mostrar_mensaje_en_pantalla("Sin espacio suficiente en el elevador", 2)
 
 def mostrar_contadores_lobby():
     total = len(personas_lobby)
@@ -221,6 +297,13 @@ def mostrar_contadores_lobby():
         s = fuente_pequena.render(txt, True, COLORES["texto_activo"])
         screen.blit(s, (10, y))
         y += 30
+    
+    # Mostrar el puntaje
+    color_puntaje = COLORES["exito"] if puntos >= 0 else COLORES["error"]
+    puntaje_txt = f"PUNTAJE: {puntos}"
+    s = fuente_pequena.render(puntaje_txt, True, color_puntaje)
+    screen.blit(s, (10, y))
+    y += 30
 
     elevador_txt = f"Elevador: {elevador.area_ocupada}/9"
     e_s = fuente_pequena.render(elevador_txt, True, COLORES["texto_activo"])

@@ -30,7 +30,9 @@ COLORES = {
     "ascensor": (255, 70, 70),
     "sombra_ascensor": (30, 30, 30),
     "brillo_ascensor": (200, 200, 200),
-    "advertencia": (255, 100, 100)
+    "advertencia": (255, 100, 100),
+    "exito": (50, 255, 50),
+    "error": (255, 50, 50)
 }
 
 panel_surface_oscura = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
