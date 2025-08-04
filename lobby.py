@@ -2,6 +2,7 @@ import pygame
 import random
 import math
 import time
+import logica_ascensor
 from jugadores import PersonaDiscapacitada, PersonaObesa, PersonaTrabajador, PersonaCliente
 
 # Variables globales para el lobby
@@ -16,6 +17,7 @@ fondo_lobby = None
 fondo_pos_x_lobby = 0
 fondo_pos_y_lobby = 0
 volver_al_menu_principal = None
+estado_juego = {"modo": "lobby"}
 
 # Variables de estado
 personas_lobby = []
@@ -49,13 +51,10 @@ def iniciar_lobby(contexto):
     fondo_pos_y_lobby = contexto.get('fondo_pos_y_lobby', 0)
     volver_al_menu_principal = contexto['volver_al_menu_principal']
 
-    # Generar personas
     global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
     personas_lobby = generar_personas_lobby()
     posiciones_personas_lobby = distribuir_personas_lobby(personas_lobby)
     persona_seleccionada_lobby = 0
-
-    bucle_lobby()
 
 def generar_personas_lobby():
     total = 20
@@ -98,6 +97,16 @@ def distribuir_personas_lobby(personas):
             posiciones.append((x, y))
     return posiciones
 
+def iniciar_animacion_ascensor():
+    logica_ascensor.iniciar_ascensor({
+        "elevador": elevador,
+        "volver_al_menu_principal": volver_al_menu_principal,
+        "COLORES": COLORES,
+        "fuente_pequena": fuente_pequena,
+    })
+    estado_juego["modo"] = "ascensor"
+    print("🎬 CAMBIO A MODO ASCENSOR")
+
 def bucle_lobby():
     global mensaje_temporal, tiempo_mensaje
 
@@ -108,43 +117,34 @@ def bucle_lobby():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 ejecutando = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    volver_al_menu_principal()
-                    ejecutando = False
-                elif event.key == pygame.K_RETURN:
-                    seleccionar()
-                elif event.key == pygame.K_RIGHT:
-                    mover_seleccion(1)
-                elif event.key == pygame.K_LEFT:
-                    mover_seleccion(-1)
-                elif event.key == pygame.K_SPACE:
-                    import logica_ascensor
-                    logica_ascensor.iniciar_ascensor({
-                        "elevador": elevador,
-                        "volver_al_menu_principal": volver_al_menu_principal,
-                        "COLORES": COLORES,
-                        "fuente_pequena": fuente_pequena,
-                    })
 
-                    # Bucle de animación del ascensor
-                    en_animacion = True
-                    while en_animacion:
-                        for ev in pygame.event.get():
-                            if ev.type == pygame.QUIT:
-                                pygame.quit()
-                                return
-                            elif ev.type == pygame.USEREVENT + 10:
-                                en_animacion = False  # Regresa al lobby
+            if estado_juego["modo"] == "lobby":
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        volver_al_menu_principal()
+                        ejecutando = False
+                    elif event.key == pygame.K_RETURN:
+                        seleccionar()
+                    elif event.key == pygame.K_RIGHT:
+                        mover_seleccion(1)
+                    elif event.key == pygame.K_LEFT:
+                        mover_seleccion(-1)
+                    elif event.key == pygame.K_SPACE:
+                        iniciar_animacion_ascensor()
 
-                        screen.fill((0, 0, 0))
-                        logica_ascensor.actualizar_ascensor()
-                        logica_ascensor.dibujar_pisos(screen)
-                        pygame.display.flip()
-                        clock.tick(60)
+            elif estado_juego["modo"] == "ascensor":
+                if event.type == pygame.USEREVENT + 10:
+                    print("✅ USEREVENT + 10 recibido")
+                    estado_juego["modo"] = "lobby"
 
-        screen.fill((0, 0, 0))
-        dibujar_lobby()
+        if estado_juego["modo"] == "lobby":
+            screen.fill((0, 0, 0))
+            dibujar_lobby()
+        elif estado_juego["modo"] == "ascensor":
+            screen.fill((0, 0, 0))
+            logica_ascensor.actualizar_ascensor()
+            logica_ascensor.dibujar_pisos(screen)
+
         pygame.display.flip()
         clock.tick(60)
 
@@ -173,13 +173,11 @@ def dibujar_lobby():
         x = ANCHO // 2 - txt.get_width() // 2
         y = 60
 
-        # Dibujar sombra negra alrededor
         for dx in [-2, 2]:
             for dy in [-2, 2]:
                 sombra = fuente_mediana.render(mensaje_temporal, True, negro)
                 screen.blit(sombra, (x + dx, y + dy))
 
-        # Dibujar texto principal en amarillo encima
         screen.blit(txt, (x, y))
 
 def mover_seleccion(delta):

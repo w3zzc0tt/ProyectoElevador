@@ -16,6 +16,7 @@ esperando_en_piso = False
 tiempo_ultimo_piso = 0
 sprite_cargado = False
 tiempo_espera_piso = 1000  # ms
+evento_enviado = False  # 🔧 Previene múltiples eventos USEREVENT+10
 
 # Recursos
 fondo_pisos = None
@@ -51,7 +52,7 @@ def importar_desde_main(modulo_main):
 def iniciar_ascensor(contexto):
     global elevador, volver_al_menu_principal, COLORES, fuente_pequena
     global personas_en_ascensor, piso_actual, subiendo, bajando
-    global esperando_en_piso, tiempo_ultimo_piso, sprite_cargado
+    global esperando_en_piso, tiempo_ultimo_piso, sprite_cargado, personas_saliendo, evento_enviado
 
     elevador = contexto['elevador']
     volver_al_menu_principal = contexto['volver_al_menu_principal']
@@ -66,10 +67,12 @@ def iniciar_ascensor(contexto):
     subiendo = True
     bajando = False
     esperando_en_piso = False
+    personas_saliendo.clear()
     tiempo_ultimo_piso = pygame.time.get_ticks()
     cargar_sprites()
     sprite_cargado = True
-
+    evento_enviado = False  # ✅ Reiniciar para que funcione correctamente cada vez
+    
 def cargar_sprites():
     global fondo_pisos, ascensor_img
     try:
@@ -87,6 +90,7 @@ def cargar_sprites():
 def actualizar_ascensor():
     global piso_actual, tiempo_ultimo_piso, esperando_en_piso
     global personas_en_ascensor, subiendo, bajando, personas_saliendo
+    global evento_enviado  # 👈 asegúrate de tener esta variable global iniciada como False
 
     ahora = pygame.time.get_ticks()
 
@@ -133,14 +137,21 @@ def actualizar_ascensor():
                 tiempo_ultimo_piso = ahora
             else:
                 bajando = False
-                volver_al_lobby()
+                if not evento_enviado:
+                    pygame.event.post(pygame.event.Event(pygame.USEREVENT + 10))
+                    evento_enviado = True  # 👈 para que no se dispare múltiples veces
+
 
 def volver_al_lobby():
     pygame.time.set_timer(pygame.USEREVENT + 10, 1000)
 
 def dibujar_pisos(screen):
+    print("🏗️ DIBUJANDO ASCENSOR")
     if not sprite_cargado:
-        return
+        cargar_sprites()
+        # No returns aquí: seguimos para dibujar
+
+    screen.fill((0, 0, 0))  # <-- ESTA LÍNEA ES LA CLAVE
 
     if fondo_pisos:
         screen.blit(fondo_pisos, (0, 0))
@@ -171,3 +182,5 @@ def dibujar_pisos(screen):
                 persona["x"] += persona["velocidad"]
                 if persona["x"] + 60 >= screen.get_width():
                     personas_saliendo.remove(persona)
+
+

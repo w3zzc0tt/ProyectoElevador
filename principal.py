@@ -1,9 +1,7 @@
 import pygame
 from menu_principal import manejar_menu
 import lobby
-import logica_ascensor  # <-- Lógica del ascensor
 from elevador import Elevador
-import sys
 
 pygame.init()
 
@@ -39,12 +37,12 @@ panel_surface_oscura = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
 panel_surface_oscura.fill((0, 0, 0, 140))
 
 def mostrar_mensaje_temporal(texto, tipo):
-    print(f"[{tipo.upper()}] {texto}")  # Puedes reemplazar con visual
+    print(f"[{tipo.upper()}] {texto}")
 
 def volver_al_menu_principal():
     print("Volviendo al menú...")
 
-# Inicializar ascensor y recursos
+# Iniciar el menú
 accion = manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCHO, ALTO, clock)
 
 if accion in ["FACIL", "NORMAL", "DIFICIL"]:
@@ -73,26 +71,8 @@ if accion in ["FACIL", "NORMAL", "DIFICIL"]:
         "volver_al_menu_principal": volver_al_menu_principal
     }
 
+    # Inicia el lobby y deja que el bucle se encargue del control completo
     lobby.iniciar_lobby(contexto)
-
-    # Importar lógica del ascensor y esperar ESPACIO
-    logica_ascensor.importar_desde_main(sys.modules[__name__])
-
-    ejecutando = True
-    while ejecutando:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                ejecutando = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    # Iniciar ascensor con contexto actual
-                    logica_ascensor.iniciar_ascensor(contexto)
-
-        if logica_ascensor.sprite_cargado:
-            logica_ascensor.actualizar_ascensor()
-            logica_ascensor.dibujar_pisos(screen)
-
-        pygame.display.flip()
-        clock.tick(60)
+    lobby.bucle_lobby()
 else:
     print(f"Acción cancelada o no reconocida: {accion}")
