@@ -22,7 +22,7 @@ class PersonaDiscapacitada(PersonaBase):
 
 class PersonaObesa(PersonaBase):
     def __init__(self):
-        super().__init__("Obeso", 3, "assets/gordomorbido.png")
+        super().__init__("Complexión Robusta", 3, "assets/gordomorbido.png")
 
 class PersonaTrabajador(PersonaBase):
     def __init__(self):

@@ -465,7 +465,7 @@ def mostrar_contadores_lobby():
         f"Trabajadores: {trabajadores}",
         f"Clientes: {clientes}",
         f"Discapacitados: {disc}",
-        f"Obesos: {obesos}",
+        f"Complexión Robusta: {obesos}",
     ]:
         s = fuente_pequena.render(txt, True, COLORES["texto_activo"])
         screen.blit(s, (10, y))
