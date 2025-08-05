@@ -377,20 +377,16 @@ def seleccionar():
     if elevador.puede_entrar(persona):
         # Agregar persona al elevador
         elevador.entrar_persona(persona)
-        
         # Remover la persona seleccionada del lobby
         personas_lobby.pop(persona_seleccionada_lobby)
         posiciones_personas_lobby.pop(persona_seleccionada_lobby)
-        
         # Ajustar índice de selección
-        if personas_lobby:  # Solo ajustar si aún hay personas
+        if personas_lobby:
             persona_seleccionada_lobby = min(persona_seleccionada_lobby, len(personas_lobby) - 1)
         else:
             persona_seleccionada_lobby = 0
-        
         # Calcular puntos según el tipo de persona
         mensaje = f"{getattr(persona, 'nombre', 'Persona')} subió al elevador"
-        puntos_anteriores = puntos
         if isinstance(persona, PersonaCliente):
             puntos += 1
             mensaje += " (+1)"
@@ -404,19 +400,17 @@ def seleccionar():
             puntos += 4
             mensaje += " (+4)"
         else:
-            # Tipo de persona desconocido, asignar 1 punto por defecto
             puntos += 1
             mensaje += " (+1)"
-        
-        # Limitar el puntaje máximo a 100
         if puntos > 100:
             puntos = 100
-        
-        # Mostrar mensaje con el puntaje actual
         mensaje += f" | Puntaje: {puntos}"
         mostrar_mensaje_en_pantalla(mensaje, 3)
     else:
-        mostrar_mensaje_en_pantalla("Sin espacio suficiente en el elevador", 2)
+        if elevador.area_ocupada >= elevador.capacidad_area:
+            mostrar_mensaje_en_pantalla("Elevador lleno, presiona ESPACIO para continuar", 3)
+        else:
+            mostrar_mensaje_en_pantalla("Sin espacio suficiente en el elevador", 2)
 
 def actualizar_estado_lobby():
     """Actualiza el estado del lobby, incluyendo la verificación de trabajadores enojados"""
