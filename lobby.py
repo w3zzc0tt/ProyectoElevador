@@ -30,32 +30,73 @@ tiempo_fin_mensaje = 0  # Tiempo en que termina el mensaje actual
 tiempo_espera_entre_mensajes = 0.5  # Tiempo mínimo entre mensajes (en segundos)
 puntos = 0  # Variable para el sistema de puntaje
 
-# Variables de temporizadores
+# Sistema de mala reputación dinámica
+mala_reputacion = 0  # Contador de trabajadores que se han ido
+total_trabajadores = 0  # Total de trabajadores generados al inicio
+limite_mala_reputacion = 5  # Límite dinámico antes del Game Over
+game_over = False  # Indica si el juego ha terminado
+game_over_img = None  # Imagen de Game Over
 temporizador_gameplay = None
-gameplay_timer_total = 210  # 3.5 minutos = 210 segundos
-gameplay_timer_current = 210
-gameplay_timer_activo = False
-gameplay_timer_inicio = 0
 
 # 🎯 ZONA EDITABLE DE PERSPECTIVA
 Y_PISO_MIN = 450
 Y_PISO_MAX = 500
 SEPARACION_MINIMA = 35
+def reiniciar_juego():
+    """Reinicia todas las variables del juego"""
+    global puntos, mala_reputacion, total_trabajadores, limite_mala_reputacion
+    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
+    global cola_mensajes, mensaje_actual, tiempo_fin_mensaje, tiempo_espera_entre_mensajes
+    global game_over, elevador
+    
+    # Reiniciar variables de puntaje y reputación
+    puntos = 0
+    mala_reputacion = 0
+    total_trabajadores = 0
+    limite_mala_reputacion = 5
+    game_over = False
+    
+    # Limpiar listas de personas
+    personas_lobby = []
+    posiciones_personas_lobby = []
+    
+    # Reiniciar selección
+    persona_seleccionada_lobby = 0
+    
+    # Limpiar mensajes
+    cola_mensajes = []
+    mensaje_actual = ""
+    tiempo_fin_mensaje = 0
+    tiempo_espera_entre_mensajes = 0.5
+    
+    # Reiniciar el elevador
+    try:
+        from elevador import Elevador
+        elevador = Elevador(9)
+    except:
+        pass
+    
+    print("🔄 Juego reiniciado completamente")
 
 def reiniciar_puntaje():
     """Reinicia el puntaje al iniciar un nuevo juego"""
-    global puntos
+    global puntos, mala_reputacion, total_trabajadores, limite_mala_reputacion, game_over
     puntos = 0
+    mala_reputacion = 0
+    total_trabajadores = 0
+    limite_mala_reputacion = 5
+    game_over = False
 
 def iniciar_lobby(contexto):
     global screen, ANCHO, ALTO, COLORES, fuente_pequena, fuente_mediana, elevador
     global fondo_lobby, fondo_pos_x_lobby, fondo_pos_y_lobby
     global volver_al_menu_principal, temporizador_gameplay
-
-    temporizador_gameplay = contexto.get('temporizador_gameplay')
-    if temporizador_gameplay:
-        temporizador_gameplay.iniciar()
-
+    global game_over, game_over_img, mala_reputacion, total_trabajadores, limite_mala_reputacion
+    
+    # === REINICIO COMPLETO DEL JUEGO ===
+    reiniciar_juego()
+    
+    # Continuar con la inicialización normal
     screen = contexto['screen']
     ANCHO = contexto['ANCHO']
     ALTO = contexto['ALTO']
@@ -63,6 +104,20 @@ def iniciar_lobby(contexto):
     fuente_pequena = contexto['fuente_pequena']
     fuente_mediana = contexto['fuente_mediana']
     elevador = contexto['elevador']
+    
+    # Cargar imagen de Game Over
+    try:
+        game_over_img = pygame.image.load("assets/gameover.png").convert()
+        game_over_img = pygame.transform.scale(game_over_img, (ANCHO, ALTO))
+    except Exception as e:
+        print(f"Error al cargar la imagen de Game Over: {e}")
+        # Crear una imagen de Game Over simple si no se puede cargar la imagen
+        game_over_img = pygame.Surface((ANCHO, ALTO))
+        game_over_img.fill((0, 0, 0))
+        font = pygame.font.SysFont(None, 72)
+        text = font.render("GAME OVER", True, (255, 0, 0))
+        game_over_img.blit(text, (ANCHO//2 - text.get_width()//2, ALTO//2 - text.get_height()//2))
+    
     fondo_lobby = pygame.transform.scale(
         pygame.image.load("assets/lobby.png").convert(),
         (ANCHO, ALTO)
@@ -70,12 +125,11 @@ def iniciar_lobby(contexto):
     fondo_pos_x_lobby = contexto.get('fondo_pos_x_lobby', 0)
     fondo_pos_y_lobby = contexto.get('fondo_pos_y_lobby', 0)
     volver_al_menu_principal = contexto['volver_al_menu_principal']
+    temporizador_gameplay = contexto.get('temporizador_gameplay')
+    if temporizador_gameplay:
+        temporizador_gameplay.iniciar()
 
     global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
-    
-    # Reiniciar el puntaje al iniciar un nuevo lobby
-    reiniciar_puntaje()
-    
     personas_lobby = generar_personas_lobby()
     posiciones_personas_lobby = distribuir_personas_lobby(personas_lobby)
     persona_seleccionada_lobby = 0
@@ -85,7 +139,8 @@ def generar_personas_lobby():
     max_obesos = 3
     personas = []
     obesos = 0
-
+    global total_trabajadores
+    
     while len(personas) < total:
         p = random.choice([PersonaDiscapacitada, PersonaObesa, PersonaTrabajador, PersonaCliente])()
         if isinstance(p, PersonaObesa) and obesos >= max_obesos:
@@ -96,8 +151,16 @@ def generar_personas_lobby():
         # Iniciar temporizador si es trabajador
         if isinstance(p, PersonaTrabajador):
             p.iniciar_temporizador()
+            total_trabajadores += 1
         personas.append(p)
-
+    
+    # Calcular el límite de mala reputación (65% del total de trabajadores)
+    global limite_mala_reputacion
+    limite_mala_reputacion = max(1, int(total_trabajadores * 0.65))
+    
+    print(f"Total de trabajadores: {total_trabajadores}")
+    print(f"Límite de mala reputación (65%): {limite_mala_reputacion}")
+    
     return personas
 
 def distribuir_personas_lobby(personas):
@@ -142,7 +205,6 @@ def iniciar_animacion_ascensor():
         if not hay_discapacitado:
             global puntos
             puntos -= 5
-            # Agregar a la cola de mensajes
             mostrar_mensaje_en_pantalla("¡PENALIZACIÓN! -5 puntos por no subir un discapacitado", 3)
             print("⚠️ PENALIZACIÓN: No había discapacitados en el elevador (-5 puntos)")
     
@@ -161,8 +223,8 @@ def iniciar_animacion_ascensor():
     print("🎬 CAMBIO A MODO ASCENSOR")
 
 def bucle_lobby():
-    global mensaje_temporal, tiempo_mensaje, penalizacion_pendiente
-
+    global mensaje_temporal, tiempo_mensaje, game_over
+    
     ejecutando = True
     clock = pygame.time.Clock()
 
@@ -171,7 +233,7 @@ def bucle_lobby():
             if event.type == pygame.QUIT:
                 ejecutando = False
 
-            if estado_juego["modo"] == "lobby":
+            if estado_juego["modo"] == "lobby" and not game_over:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         volver_al_menu_principal()
@@ -189,61 +251,32 @@ def bucle_lobby():
                 if event.type == pygame.USEREVENT + 10:
                     print("✅ USEREVENT + 10 recibido")
                     estado_juego["modo"] = "lobby"
-                    
-                    # Si hay una penalización pendiente, mostrarla
-                    if penalizacion_pendiente:
-                        mostrar_mensaje_en_pantalla(penalizacion_pendiente, 4)
-                        penalizacion_pendiente = None  # Limpiar la penalización pendiente
+        
+        # Manejar Game Over
+        if game_over:
+            screen.blit(game_over_img, (0, 0))
+            pygame.display.flip()
+            pygame.time.wait(3000)  # Mostrar la pantalla de Game Over por 3 segundos
+            volver_al_menu_principal()
+            ejecutando = False
+            return
 
         # Actualizar estado del lobby (incluyendo trabajadores enojados)
-        if estado_juego["modo"] == "lobby":
+        if estado_juego["modo"] == "lobby" and not game_over:
             actualizar_estado_lobby()
             
             # Verificar temporizador de gameplay
             if temporizador_gameplay:
                 terminado = temporizador_gameplay.actualizar()
                 if terminado:
-                    # Mostrar pantalla de Game Over
-                    gameover_img = pygame.image.load("assets/gameover.png").convert()
-                    gameover_img = pygame.transform.scale(gameover_img, (ANCHO, ALTO))
-                    screen.blit(gameover_img, (0, 0))
-                    pygame.display.flip()
-
-                    # Definir rectángulos invisibles para los botones
-                    boton_ancho = 320
-                    boton_alto = 90
-                    espacio_entre = 40
-                    y_boton = ALTO - 160
-                    x_boton1 = ANCHO // 2 - boton_ancho - espacio_entre // 2
-                    x_boton2 = ANCHO // 2 + espacio_entre // 2
-                    rect_menu = pygame.Rect(x_boton1, y_boton, boton_ancho, boton_alto)
-                    rect_salir = pygame.Rect(x_boton2, y_boton, boton_ancho, boton_alto)
-
-                    esperando = True
-                    while esperando:
-                        for event in pygame.event.get():
-                            if event.type == pygame.QUIT:
-                                pygame.quit()
-                                return
-                            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                                mx, my = event.pos
-                                if rect_menu.collidepoint(mx, my):
-                                    volver_al_menu_principal()
-                                    ejecutando = False
-                                    esperando = False
-                                elif rect_salir.collidepoint(mx, my):
-                                    pygame.quit()
-                                    return
-                            if event.type == pygame.KEYDOWN:
-                                # Cualquier tecla vuelve al menú principal
-                                volver_al_menu_principal()
-                                ejecutando = False
-                                esperando = False
-                        pygame.time.wait(50)
+                    mostrar_mensaje_en_pantalla("¡Tiempo agotado! Fin del juego.", 5)
+                    pygame.time.wait(2000)
+                    volver_al_menu_principal()
+                    ejecutando = False
             
             screen.fill((0, 0, 0))
             dibujar_lobby()
-        elif estado_juego["modo"] == "ascensor":
+        elif estado_juego["modo"] == "ascensor" and not game_over:
             screen.fill((0, 0, 0))
             logica_ascensor.actualizar_ascensor()
             logica_ascensor.dibujar_pisos(screen)
@@ -282,6 +315,22 @@ def dibujar_lobby():
     instrucciones = "Flechas ← →  : Mover | ENTER: Subir | ESC: Menu"
     txt = fuente_pequena.render(instrucciones, True, COLORES['texto_activo'])
     screen.blit(txt, (ANCHO // 2 - txt.get_width() // 2, ALTO - 40))
+    
+    # Mostrar advertencia de mala reputación crítica
+    if mala_reputacion >= limite_mala_reputacion - 2 and mala_reputacion < limite_mala_reputacion:
+        advertencia = "¡CUIDADO! Los trabajadores están perdiendo la paciencia"
+        amarillo = (255, 255, 0)
+        negro = (0, 0, 0)
+        txt = fuente_pequena.render(advertencia, True, amarillo)
+        x = ANCHO // 2 - txt.get_width() // 2
+        y = ALTO - 70
+
+        for dx in [-2, 2]:
+            for dy in [-2, 2]:
+                sombra = fuente_pequena.render(advertencia, True, negro)
+                screen.blit(sombra, (x + dx, y + dy))
+
+        screen.blit(txt, (x, y))
 
     # Mostrar mensaje temporal (manejo de cola)
     # Si hay mensajes en la cola y ha pasado suficiente tiempo desde el último mensaje
@@ -371,7 +420,7 @@ def seleccionar():
 
 def actualizar_estado_lobby():
     """Actualiza el estado del lobby, incluyendo la verificación de trabajadores enojados"""
-    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby, puntos
+    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby, puntos, mala_reputacion, game_over
     
     # Lista para almacenar los índices de trabajadores a eliminar
     trabajadores_a_eliminar = []
@@ -382,17 +431,20 @@ def actualizar_estado_lobby():
         if isinstance(persona, PersonaTrabajador) and hasattr(persona, 'temporizador') and persona.temporizador:
             # Actualizar el temporizador y verificar si terminó
             if persona.temporizador.actualizar():
-                trabajadores_a_eliminar.append((i, persona))
+                trabajadores_a_eliminar.append(i)
     
     # Eliminar trabajadores y aplicar penalizaciones
-    for i, persona in reversed(trabajadores_a_eliminar):
-        # Aplicar penalización
-        puntos -= 4
-        # Agregar a la cola de mensajes
-        mostrar_mensaje_en_pantalla(f"{persona.nombre} se fue molesto (-4)", 3)
-        
-        # Eliminar de las listas
-        if i < len(personas_lobby) and i < len(posiciones_personas_lobby):
+    for i in reversed(trabajadores_a_eliminar):
+        if i < len(personas_lobby):
+            persona = personas_lobby[i]
+            # Aplicar penalización
+            puntos -= 4
+            mostrar_mensaje_en_pantalla(f"{persona.nombre} se fue molesto (-4)", 3)
+            
+            # Incrementar mala reputación
+            mala_reputacion += 1
+            
+            # Eliminar de las listas
             personas_lobby.pop(i)
             posiciones_personas_lobby.pop(i)
             
@@ -401,6 +453,10 @@ def actualizar_estado_lobby():
                 persona_seleccionada_lobby -= 1
             elif persona_seleccionada_lobby == i and persona_seleccionada_lobby >= len(personas_lobby):
                 persona_seleccionada_lobby = max(0, len(personas_lobby) - 1)
+    
+    # Verificar si se alcanzó el límite de mala reputación
+    if mala_reputacion >= limite_mala_reputacion:
+        game_over = True
 
 def mostrar_contadores_lobby():
     total = len(personas_lobby)
@@ -425,6 +481,20 @@ def mostrar_contadores_lobby():
     color_puntaje = COLORES["exito"] if puntos >= 0 else COLORES["error"]
     puntaje_txt = f"PUNTAJE: {puntos}"
     s = fuente_pequena.render(puntaje_txt, True, color_puntaje)
+    screen.blit(s, (10, y))
+    y += 30
+    
+    # Mostrar la mala reputación dinámica
+    porcentaje = (mala_reputacion / limite_mala_reputacion) * 100
+    if porcentaje >= 80:
+        color_reputacion = COLORES["error"]
+    elif porcentaje >= 50:
+        color_reputacion = COLORES["advertencia"]
+    else:
+        color_reputacion = COLORES["texto_activo"]
+    
+    reputacion_txt = f"REPUTACIÓN: {mala_reputacion}/{limite_mala_reputacion}"
+    s = fuente_pequena.render(reputacion_txt, True, color_reputacion)
     screen.blit(s, (10, y))
     y += 30
 

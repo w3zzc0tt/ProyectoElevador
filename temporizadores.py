@@ -67,7 +67,7 @@ class TemporizadorTrabajador(TemporizadorBase):
 
 class TemporizadorGameplay(TemporizadorBase):
     def __init__(self):
-        super().__init__(5)  # 3.5 minutos = 210 segundos
+        super().__init__(210)  # 3.5 minutos = 210 segundos
         
     def dibujar_temporizador_principal(self, screen, fuente, colores, ancho_pantalla):
         tiempo_texto = self.obtener_tiempo_formateado()

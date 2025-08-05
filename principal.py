@@ -44,6 +44,7 @@ def mostrar_mensaje_temporal(texto, tipo):
 
 # Bandera global para controlar el ciclo principal
 salir_del_juego = False
+
 def volver_al_menu_principal():
     global salir_del_juego
     # Simplemente retorna el control al ciclo principal
@@ -55,6 +56,8 @@ while not salir_del_juego:
     accion = manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCHO, ALTO, clock)
 
     if accion in ["FACIL", "NORMAL", "DIFICIL"]:
+        lobby.reiniciar_juego()
+        
         elevador = Elevador()
         fondo_lobby = pygame.image.load("assets/lobby.png").convert()
         fondo_lobby = pygame.transform.scale(fondo_lobby, (ANCHO, ALTO))

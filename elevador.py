@@ -1,22 +1,25 @@
 class Elevador:
-    def __init__(self, max_area=9):
-        self.max_area = max_area          # Área máxima que puede ocupar
-        self.area_ocupada = 0             # Área actualmente ocupada
-        self.personas_dentro = []         # Lista de personas dentro del elevador
+    def __init__(self, capacidad_area=9):  # Máximo 9 áreas
+        self.capacidad_area = capacidad_area
+        self.area_ocupada = 0
+        self.personas_dentro = []
 
     def puede_entrar(self, persona):
-        """Verifica si la persona cabe en el elevador según su espacio."""
-        return self.area_ocupada + persona.espacio <= self.max_area
+        """Verifica si una persona puede entrar al elevador"""
+        return (self.area_ocupada + persona.area_ocupada) <= self.capacidad_area
 
     def entrar_persona(self, persona):
-        """Intenta subir a la persona si hay espacio disponible."""
+        """Agrega una persona al elevador"""
         if self.puede_entrar(persona):
             self.personas_dentro.append(persona)
-            self.area_ocupada += persona.espacio
+            self.area_ocupada += persona.area_ocupada
             return True
         return False
 
-    def limpiar(self):
-        """Vacía el elevador completamente (útil después de llegar al último piso)."""
-        self.personas_dentro.clear()
-        self.area_ocupada = 0
+    def salir_persona(self, persona):
+        """Saca una persona del elevador"""
+        if persona in self.personas_dentro:
+            self.personas_dentro.remove(persona)
+            self.area_ocupada -= persona.area_ocupada
+            return True
+        return False
