@@ -18,16 +18,17 @@ fondo_pos_x_lobby = 0
 fondo_pos_y_lobby = 0
 volver_al_menu_principal = None
 estado_juego = {"modo": "lobby"}
+penalizacion_pendiente = None
 
 # Variables de estado
 personas_lobby = []
 posiciones_personas_lobby = []
 persona_seleccionada_lobby = 0
-mensaje_temporal = ""
-tiempo_mensaje = 0
-puntos = 0  # Nueva variable para el sistema de puntaje
-mensaje_temporal = ""
-tiempo_mensaje = 0
+cola_mensajes = []  # Nueva cola para almacenar mensajes pendientes
+mensaje_actual = ""  # Mensaje que se está mostrando actualmente
+tiempo_fin_mensaje = 0  # Tiempo en que termina el mensaje actual
+tiempo_espera_entre_mensajes = 0.5  # Tiempo mínimo entre mensajes (en segundos)
+puntos = 0  # Variable para el sistema de puntaje
 
 # Variables de temporizadores
 temporizador_gameplay = None
@@ -141,7 +142,9 @@ def iniciar_animacion_ascensor():
         if not hay_discapacitado:
             global puntos
             puntos -= 5
-            mostrar_mensaje_en_pantalla("Penalización: No se subió ningún discapacitado (-5)", 3)
+            # Agregar a la cola de mensajes
+            mostrar_mensaje_en_pantalla("¡PENALIZACIÓN! -5 puntos por no subir un discapacitado", 3)
+            print("⚠️ PENALIZACIÓN: No había discapacitados en el elevador (-5 puntos)")
     
     # Continuar con la animación del ascensor
     logica_ascensor.iniciar_ascensor({
@@ -158,7 +161,7 @@ def iniciar_animacion_ascensor():
     print("🎬 CAMBIO A MODO ASCENSOR")
 
 def bucle_lobby():
-    global mensaje_temporal, tiempo_mensaje
+    global mensaje_temporal, tiempo_mensaje, penalizacion_pendiente
 
     ejecutando = True
     clock = pygame.time.Clock()
@@ -186,8 +189,17 @@ def bucle_lobby():
                 if event.type == pygame.USEREVENT + 10:
                     print("✅ USEREVENT + 10 recibido")
                     estado_juego["modo"] = "lobby"
+                    
+                    # Si hay una penalización pendiente, mostrarla
+                    if penalizacion_pendiente:
+                        mostrar_mensaje_en_pantalla(penalizacion_pendiente, 4)
+                        penalizacion_pendiente = None  # Limpiar la penalización pendiente
 
+        # Actualizar estado del lobby (incluyendo trabajadores enojados)
         if estado_juego["modo"] == "lobby":
+            actualizar_estado_lobby()
+            
+            # Verificar temporizador de gameplay
             if temporizador_gameplay:
                 terminado = temporizador_gameplay.actualizar()
                 if terminado:
@@ -195,8 +207,9 @@ def bucle_lobby():
                     pygame.time.wait(2000)
                     volver_al_menu_principal()
                     ejecutando = False
-                screen.fill((0, 0, 0))
-                dibujar_lobby()
+            
+            screen.fill((0, 0, 0))
+            dibujar_lobby()
         elif estado_juego["modo"] == "ascensor":
             screen.fill((0, 0, 0))
             logica_ascensor.actualizar_ascensor()
@@ -206,6 +219,8 @@ def bucle_lobby():
         clock.tick(60)
 
 def dibujar_lobby():
+    global cola_mensajes, mensaje_actual, tiempo_fin_mensaje, tiempo_espera_entre_mensajes
+    
     if fondo_lobby:
         screen.blit(fondo_lobby, (fondo_pos_x_lobby, fondo_pos_y_lobby))
     if temporizador_gameplay:
@@ -235,16 +250,25 @@ def dibujar_lobby():
     txt = fuente_pequena.render(instrucciones, True, COLORES['texto_activo'])
     screen.blit(txt, (ANCHO // 2 - txt.get_width() // 2, ALTO - 40))
 
-    if mensaje_temporal and time.time() < tiempo_mensaje:
+    # Mostrar mensaje temporal (manejo de cola)
+    # Si hay mensajes en la cola y ha pasado suficiente tiempo desde el último mensaje
+    if cola_mensajes and (time.time() > tiempo_fin_mensaje + tiempo_espera_entre_mensajes):
+        texto, duracion = cola_mensajes.pop(0)
+        mensaje_actual = texto
+        tiempo_fin_mensaje = time.time() + duracion
+        print(f"[MENSAJE] Mostrando mensaje: '{texto}'")
+
+    # Mostrar el mensaje actual si existe y aún no ha expirado
+    if mensaje_actual and time.time() < tiempo_fin_mensaje:
         amarillo = (255, 255, 0)
         negro = (0, 0, 0)
-        txt = fuente_mediana.render(mensaje_temporal, True, amarillo)
+        txt = fuente_mediana.render(mensaje_actual, True, amarillo)
         x = ANCHO // 2 - txt.get_width() // 2
         y = 60
 
         for dx in [-2, 2]:
             for dy in [-2, 2]:
-                sombra = fuente_mediana.render(mensaje_temporal, True, negro)
+                sombra = fuente_mediana.render(mensaje_actual, True, negro)
                 screen.blit(sombra, (x + dx, y + dy))
 
         screen.blit(txt, (x, y))
@@ -312,6 +336,39 @@ def seleccionar():
     else:
         mostrar_mensaje_en_pantalla("Sin espacio suficiente en el elevador", 2)
 
+def actualizar_estado_lobby():
+    """Actualiza el estado del lobby, incluyendo la verificación de trabajadores enojados"""
+    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby, puntos
+    
+    # Lista para almacenar los índices de trabajadores a eliminar
+    trabajadores_a_eliminar = []
+    
+    # Verificar cada persona en el lobby
+    for i, persona in enumerate(personas_lobby):
+        # Verificar si es un trabajador con temporizador
+        if isinstance(persona, PersonaTrabajador) and hasattr(persona, 'temporizador') and persona.temporizador:
+            # Actualizar el temporizador y verificar si terminó
+            if persona.temporizador.actualizar():
+                trabajadores_a_eliminar.append((i, persona))
+    
+    # Eliminar trabajadores y aplicar penalizaciones
+    for i, persona in reversed(trabajadores_a_eliminar):
+        # Aplicar penalización
+        puntos -= 4
+        # Agregar a la cola de mensajes
+        mostrar_mensaje_en_pantalla(f"{persona.nombre} se fue molesto (-4)", 3)
+        
+        # Eliminar de las listas
+        if i < len(personas_lobby) and i < len(posiciones_personas_lobby):
+            personas_lobby.pop(i)
+            posiciones_personas_lobby.pop(i)
+            
+            # Ajustar índice de selección si es necesario
+            if persona_seleccionada_lobby > i:
+                persona_seleccionada_lobby -= 1
+            elif persona_seleccionada_lobby == i and persona_seleccionada_lobby >= len(personas_lobby):
+                persona_seleccionada_lobby = max(0, len(personas_lobby) - 1)
+
 def mostrar_contadores_lobby():
     total = len(personas_lobby)
     trabajadores = sum(isinstance(p, PersonaTrabajador) for p in personas_lobby)
@@ -343,6 +400,7 @@ def mostrar_contadores_lobby():
     screen.blit(e_s, (ANCHO - e_s.get_width() - 10, 10))
 
 def mostrar_mensaje_en_pantalla(texto, duracion=2):
-    global mensaje_temporal, tiempo_mensaje
-    mensaje_temporal = texto
-    tiempo_mensaje = time.time() + duracion
+    """Agrega un mensaje a la cola de mensajes pendientes"""
+    global cola_mensajes
+    cola_mensajes.append((texto, duracion))
+    print(f"[MENSAJE] Mensaje agregado a la cola: '{texto}' (dura {duracion}s)")
