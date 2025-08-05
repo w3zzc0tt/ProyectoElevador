@@ -41,44 +41,51 @@ panel_surface_oscura.fill((0, 0, 0, 140))
 def mostrar_mensaje_temporal(texto, tipo):
     print(f"[{tipo.upper()}] {texto}")
 
+
+# Bandera global para controlar el ciclo principal
+salir_del_juego = False
 def volver_al_menu_principal():
-    print("Volviendo al menú...")
-
-# Iniciar el menú
-accion = manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCHO, ALTO, clock)
-
-if accion in ["FACIL", "NORMAL", "DIFICIL"]:
-    elevador = Elevador()
-    fondo_lobby = pygame.image.load("assets/lobby.png").convert()
-    fondo_lobby = pygame.transform.scale(fondo_lobby, (ANCHO, ALTO))
-
-    temporizador_gameplay = TemporizadorGameplay()  # ← Agrega esta línea antes del diccionario
+    global salir_del_juego
+    # Simplemente retorna el control al ciclo principal
+    pass
 
 
-    contexto = {
-        "screen": screen,
-        "ANCHO": ANCHO,
-        "ALTO": ALTO,
-        "COLORES": COLORES,
-        "fuente": fuente,
-        "fuente_pequena": fuente_pequena,
-        "fuente_mediana": fuente_mediana,
-        "fuente_led": fuente_led,
-        "clock": clock,
-        "panel_surface_oscura": panel_surface_oscura,
-        "dificultad_actual": accion,
-        "temporizador_gameplay": temporizador_gameplay,
-        "elevador": elevador,
-        "fondo_lobby": fondo_lobby,
-        "fondo_pos_x_lobby": 0,
-        "fondo_pos_y_lobby": 0,
-        "Dificultad": accion,
-        "mostrar_mensaje_temporal": mostrar_mensaje_temporal,
-        "volver_al_menu_principal": volver_al_menu_principal
-    }
+# Bucle principal del juego
+while not salir_del_juego:
+    accion = manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCHO, ALTO, clock)
 
-    # Inicia el lobby y deja que el bucle se encargue del control completo
-    lobby.iniciar_lobby(contexto)
-    lobby.bucle_lobby()
-else:
-    print(f"Acción cancelada o no reconocida: {accion}")
+    if accion in ["FACIL", "NORMAL", "DIFICIL"]:
+        elevador = Elevador()
+        fondo_lobby = pygame.image.load("assets/lobby.png").convert()
+        fondo_lobby = pygame.transform.scale(fondo_lobby, (ANCHO, ALTO))
+
+        temporizador_gameplay = TemporizadorGameplay()
+
+        contexto = {
+            "screen": screen,
+            "ANCHO": ANCHO,
+            "ALTO": ALTO,
+            "COLORES": COLORES,
+            "fuente": fuente,
+            "fuente_pequena": fuente_pequena,
+            "fuente_mediana": fuente_mediana,
+            "fuente_led": fuente_led,
+            "clock": clock,
+            "panel_surface_oscura": panel_surface_oscura,
+            "dificultad_actual": accion,
+            "temporizador_gameplay": temporizador_gameplay,
+            "elevador": elevador,
+            "fondo_lobby": fondo_lobby,
+            "fondo_pos_x_lobby": 0,
+            "fondo_pos_y_lobby": 0,
+            "Dificultad": accion,
+            "mostrar_mensaje_temporal": mostrar_mensaje_temporal,
+            "volver_al_menu_principal": volver_al_menu_principal
+        }
+
+        lobby.iniciar_lobby(contexto)
+        lobby.bucle_lobby()
+    elif accion == "salir":
+        salir_del_juego = True
+    else:
+        print(f"Acción cancelada o no reconocida: {accion}")

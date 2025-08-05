@@ -203,10 +203,43 @@ def bucle_lobby():
             if temporizador_gameplay:
                 terminado = temporizador_gameplay.actualizar()
                 if terminado:
-                    mostrar_mensaje_en_pantalla("¡Tiempo agotado! Fin del juego.", 5)
-                    pygame.time.wait(2000)
-                    volver_al_menu_principal()
-                    ejecutando = False
+                    # Mostrar pantalla de Game Over
+                    gameover_img = pygame.image.load("assets/gameover.png").convert()
+                    gameover_img = pygame.transform.scale(gameover_img, (ANCHO, ALTO))
+                    screen.blit(gameover_img, (0, 0))
+                    pygame.display.flip()
+
+                    # Definir rectángulos invisibles para los botones
+                    boton_ancho = 320
+                    boton_alto = 90
+                    espacio_entre = 40
+                    y_boton = ALTO - 160
+                    x_boton1 = ANCHO // 2 - boton_ancho - espacio_entre // 2
+                    x_boton2 = ANCHO // 2 + espacio_entre // 2
+                    rect_menu = pygame.Rect(x_boton1, y_boton, boton_ancho, boton_alto)
+                    rect_salir = pygame.Rect(x_boton2, y_boton, boton_ancho, boton_alto)
+
+                    esperando = True
+                    while esperando:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
+                                pygame.quit()
+                                return
+                            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                                mx, my = event.pos
+                                if rect_menu.collidepoint(mx, my):
+                                    volver_al_menu_principal()
+                                    ejecutando = False
+                                    esperando = False
+                                elif rect_salir.collidepoint(mx, my):
+                                    pygame.quit()
+                                    return
+                            if event.type == pygame.KEYDOWN:
+                                # Cualquier tecla vuelve al menú principal
+                                volver_al_menu_principal()
+                                ejecutando = False
+                                esperando = False
+                        pygame.time.wait(50)
             
             screen.fill((0, 0, 0))
             dibujar_lobby()
