@@ -224,7 +224,7 @@ def iniciar_animacion_ascensor():
 
 def bucle_lobby():
     global mensaje_temporal, tiempo_mensaje, game_over
-    
+
     ejecutando = True
     clock = pygame.time.Clock()
 
@@ -251,13 +251,23 @@ def bucle_lobby():
                 if event.type == pygame.USEREVENT + 10:
                     print("✅ USEREVENT + 10 recibido")
                     estado_juego["modo"] = "lobby"
-        
-        # Manejar Game Over
+
+        # Manejar Game Over por reputación
         if game_over:
-            screen.blit(game_over_img, (0, 0))
-            pygame.display.flip()
-            pygame.time.wait(3000)  # Mostrar la pantalla de Game Over por 3 segundos
-            volver_al_menu_principal()
+            contexto = {
+                "screen": screen,
+                "fuente_led": pygame.font.SysFont("Courier New", 48, bold=True),
+                "ANCHO": ANCHO,
+                "ALTO": ALTO,
+                "COLORES": COLORES,
+                "clock": pygame.time.Clock()
+            }
+            resultado = mostrar_game_over(contexto)
+            if resultado == "menu":
+                volver_al_menu_principal()
+            elif resultado == "salir":
+                import sys
+                sys.exit()
             ejecutando = False
             return
 
@@ -269,10 +279,26 @@ def bucle_lobby():
             if temporizador_gameplay:
                 terminado = temporizador_gameplay.actualizar()
                 if terminado:
-                    mostrar_mensaje_en_pantalla("¡Tiempo agotado! Fin del juego.", 5)
-                    pygame.time.wait(2000)
-                    volver_al_menu_principal()
+                    mostrar_mensaje_en_pantalla("¡Tiempo agotado! Fin del juego.", 2)
+                    pygame.display.flip()
+                    pygame.time.wait(1000)
+                    # Mostrar pantalla de Game Over y esperar tecla
+                    contexto = {
+                        "screen": screen,
+                        "fuente_led": pygame.font.SysFont("Courier New", 48, bold=True),
+                        "ANCHO": ANCHO,
+                        "ALTO": ALTO,
+                        "COLORES": COLORES,
+                        "clock": pygame.time.Clock()
+                    }
+                    resultado = mostrar_game_over(contexto)
+                    if resultado == "menu":
+                        volver_al_menu_principal()
+                    elif resultado == "salir":
+                        import sys
+                        sys.exit()
                     ejecutando = False
+                    return
             
             screen.fill((0, 0, 0))
             dibujar_lobby()
@@ -501,3 +527,48 @@ def mostrar_mensaje_en_pantalla(texto, duracion=2):
     global cola_mensajes
     cola_mensajes.append((texto, duracion))
     print(f"[MENSAJE] Mensaje agregado a la cola: '{texto}' (dura {duracion}s)")
+
+def mostrar_game_over(contexto):
+    import pygame
+    import sys
+
+    screen = contexto["screen"]
+    ANCHO = contexto["ANCHO"]
+    ALTO = contexto["ALTO"]
+    clock = contexto["clock"]
+
+    # Cargar la imagen de Game Over
+    try:
+        game_over_img = pygame.image.load("assets/gameover.png").convert_alpha()
+        game_over_img = pygame.transform.scale(game_over_img, (ANCHO, ALTO))
+    except Exception as e:
+        print(f"[ERROR] No se pudo cargar gameover.png: {e}")
+        return
+
+    # Botón izquierdo: Volver al menú principal (verde, más alargado)
+    rect_menu = pygame.Rect(80, 500, 410, 60)   # Izquierda y más ancho
+    # Botón derecho: Salir (rojo, más alargado)
+    rect_salir = pygame.Rect(542, 500, 275, 60) # Derecha y más ancho
+
+    esperando = True
+    while esperando:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                esperando = False
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    esperando = False
+                    return "menu"
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                if rect_menu.collidepoint(mouse_pos):
+                    esperando = False
+                    return "menu"
+                elif rect_salir.collidepoint(mouse_pos):
+                    esperando = False
+                    sys.exit()
+
+        screen.blit(game_over_img, (0, 0))
+        pygame.display.flip()
+        clock.tick(30)
