@@ -1,6 +1,15 @@
 import pygame
 
 def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCHO, ALTO, clock):
+    # 🔊 Cargar y reproducir música del menú al inicio (si no está sonando)
+    if not pygame.mixer.music.get_busy():
+        try:
+            pygame.mixer.music.load("assets/menu_soundtrack.mp3")
+            pygame.mixer.music.play(-1)  # Bucle infinito
+            print("🎵 Música del menú iniciada")
+        except pygame.error as e:
+            print(f"❌ Error al cargar menu_soundtrack.mp3: {e}")
+
     fondo = pygame.image.load("assets/elevator.jpg").convert()
     fondo = pygame.transform.scale(fondo, (ANCHO, ALTO))
 
@@ -28,7 +37,9 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
                     opcion_seleccionada = min(len(menus) - 1, opcion_seleccionada + 1)
                 elif event.key == pygame.K_RETURN:
                     if opcion_seleccionada == 0:
-                        return "FACIL"  # Redirige al lobby
+                        pygame.mixer.music.stop()  # 🛑 Detener música del menú
+                        print("⏹️ Música del menú detenida al iniciar el juego")
+                        return "FACIL"
                     elif opcion_seleccionada == 1:
                         return "config"
                     elif opcion_seleccionada == 2:
@@ -38,7 +49,9 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
                     if indice < len(menus):
                         opcion_seleccionada = indice
                         if indice == 0:
-                            return "FACIL"  # Redirige al lobby
+                            pygame.mixer.music.stop()  # 🛑 Detener música del menú
+                            print("⏹️ Música del menú detenida al iniciar el juego")
+                            return "FACIL"
                         elif indice == 1:
                             return "config"
                         elif indice == 2:
@@ -52,7 +65,9 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     if opcion_seleccionada == 0:
-                        return "FACIL"  # Redirige al lobby
+                        pygame.mixer.music.stop()  # 🛑 Detener música del menú
+                        print("⏹️ Música del menú detenida al iniciar el juego")
+                        return "FACIL"
                     elif opcion_seleccionada == 1:
                         return "config"
                     elif opcion_seleccionada == 2:
