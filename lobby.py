@@ -4,6 +4,7 @@ import math
 import time
 import logica_ascensor
 from jugadores import PersonaDiscapacitada, PersonaObesa, PersonaTrabajador, PersonaCliente
+from elevador import Elevador
 
 # Variables globales para el lobby
 screen = None
@@ -19,7 +20,9 @@ fondo_pos_y_lobby = 0
 volver_al_menu_principal = None
 estado_juego = {"modo": "lobby"}
 penalizacion_pendiente = None
-
+total_discapacitados = 0
+penalizaciones_discapacitados = 0
+denuncias = 0
 # Variables de estado
 personas_lobby = []
 posiciones_personas_lobby = []
@@ -46,37 +49,26 @@ tiempo_inicio_juego = 0    # Tiempo cuando inicia el juego
 Y_PISO_MIN = 450
 Y_PISO_MAX = 500
 SEPARACION_MINIMA = 35
+
 def reiniciar_juego():
-    """Reinicia todas las variables del juego"""
-    # Declarar todas las variables globales al inicio
-    global mala_reputacion, game_over, temporizador_gameplay, total_personas_inicial
-    global tiempo_inicio_juego, total_trabajadores, puntos, limite_mala_reputacion
+    """Reinicia completamente todas las variables del juego"""
+    global puntos, mala_reputacion, total_trabajadores, limite_mala_reputacion
     global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
     global cola_mensajes, mensaje_actual, tiempo_fin_mensaje, tiempo_espera_entre_mensajes
-    global elevador
+    global game_over, elevador
+    global total_discapacitados_generados, penalizaciones_discapacitados, denuncias
     
-    # Reiniciar variables de juego
-    mala_reputacion = 0
-    game_over = False
-    temporizador_gameplay = None
-    total_personas_inicial = 0
-    tiempo_inicio_juego = time.time()
-    total_trabajadores = 0
+    # Reiniciar variables de puntaje y reputación
     puntos = 0
+    mala_reputacion = 0
+    total_trabajadores = 0
     limite_mala_reputacion = 5
+    game_over = False
     
-    # Reiniciar listas
-    personas_lobby = []
-    posiciones_personas_lobby = []
-    cola_mensajes = []
-    
-    # Reiniciar variables de estado
-    persona_seleccionada_lobby = 0
-    mensaje_actual = ""
-    tiempo_fin_mensaje = 0
-    tiempo_espera_entre_mensajes = 0.5
-    
-    print("🔄 Juego reiniciado completamente")
+    # Reiniciar contadores para el sistema de denuncias
+    total_discapacitados_generados = 0
+    penalizaciones_discapacitados = 0
+    denuncias = 0
     
     # Limpiar listas de personas
     personas_lobby = []
@@ -92,13 +84,26 @@ def reiniciar_juego():
     tiempo_espera_entre_mensajes = 0.5
     
     # Reiniciar el elevador
-    try:
-        from elevador import Elevador
-        elevador = Elevador(9)
-    except:
-        pass
+    elevador = Elevador(9)
     
     print("🔄 Juego reiniciado completamente")
+
+def contar_discapacitados_inicial():
+    global total_discapacitados
+    total_discapacitados = sum(isinstance(p, PersonaDiscapacitada) for p in personas_lobby)
+
+def penalizar_discapacitado():
+    global penalizaciones_discapacitados, puntos
+    penalizaciones_discapacitados += 1
+    puntos -= 4
+    mostrar_mensaje_en_pantalla("Discapacitado se fue sin ser atendido (-4)", 2)
+
+    # Si ya se llegó a la mitad de penalizaciones
+    if penalizaciones_discapacitados >= max(1, total_discapacitados // 2):
+        if random.random() < 0.82:
+            denuncias += 1
+            puntos -= 15
+            mostrar_mensaje_en_pantalla("¡Demanda! El elevador pierde 15 puntos por no atender discapacitados", 3)
 
 def reiniciar_puntaje():
     """Reinicia el puntaje al iniciar un nuevo juego"""
@@ -157,8 +162,10 @@ def iniciar_lobby(contexto):
     total_personas_inicial = len(personas_lobby)
     posiciones_personas_lobby = distribuir_personas_lobby(personas_lobby)
     persona_seleccionada_lobby = 0
+    tiempo_inicio_juego = time.time()
 
 def generar_personas_lobby():
+    global total_discapacitados_generados
     total = 20
     max_obesos = 3
     personas = []
@@ -176,6 +183,9 @@ def generar_personas_lobby():
         if isinstance(p, PersonaTrabajador):
             p.iniciar_temporizador()
             total_trabajadores += 1
+        # Contar discapacitados generados
+        if isinstance(p, PersonaDiscapacitada):
+            total_discapacitados_generados += 1
         personas.append(p)
     
     # Calcular el límite de mala reputación (65% del total de trabajadores)
@@ -184,6 +194,7 @@ def generar_personas_lobby():
     
     print(f"Total de trabajadores: {total_trabajadores}")
     print(f"Límite de mala reputación (65%): {limite_mala_reputacion}")
+    print(f"Total de discapacitados generados: {total_discapacitados_generados}")
     
     return personas
 
@@ -227,10 +238,25 @@ def iniciar_animacion_ascensor():
         
         # Aplicar penalización SOLO si NO hay ningún discapacitado en el elevador
         if not hay_discapacitado:
-            global puntos
+            global puntos, penalizaciones_discapacitados, denuncias
+            
+            # Aplicar penalización base de -5 puntos
             puntos -= 5
             mostrar_mensaje_en_pantalla("¡PENALIZACIÓN! -5 puntos por no subir un discapacitado", 3)
             print("⚠️ PENALIZACIÓN: No había discapacitados en el elevador (-5 puntos)")
+            
+            # Incrementar el contador de penalizaciones para el sistema de denuncias
+            penalizaciones_discapacitados += 1
+            
+            # Verificar si se debe aplicar una denuncia
+            if penalizaciones_discapacitados >= max(1, total_discapacitados_generados // 2):
+                if random.random() < 0.82:  # 82% de probabilidad
+                    puntos -= 15
+                    denuncias += 1
+                    mensaje = "¡DEMANDA! -15 puntos por no atender suficientes discapacitados"
+                    mensaje += f" | Penalizaciones: {penalizaciones_discapacitados}/{total_discapacitados_generados}"
+                    mostrar_mensaje_en_pantalla(mensaje, 3)
+                    print(f"⚖️ DEMANDA: Penalizaciones {penalizaciones_discapacitados} de {total_discapacitados_generados}")
     
     # Continuar con la animación del ascensor
     logica_ascensor.iniciar_ascensor({
@@ -591,6 +617,11 @@ def mostrar_contadores_lobby():
     
     reputacion_txt = f"REPUTACIÓN: {mala_reputacion}/{limite_mala_reputacion}"
     s = fuente_pequena.render(reputacion_txt, True, color_reputacion)
+    screen.blit(s, (10, y))
+    y += 30
+
+    denuncias_txt = f"DENUNCIAS: {denuncias}"
+    s = fuente_pequena.render(denuncias_txt, True, COLORES["error"])
     screen.blit(s, (10, y))
     y += 30
 
