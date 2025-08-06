@@ -5,6 +5,7 @@ import time
 import logica_ascensor
 from jugadores import PersonaDiscapacitada, PersonaObesa, PersonaTrabajador, PersonaCliente
 from elevador import Elevador
+import webbrowser
 
 # Variables globales para el lobby
 screen = None
@@ -165,13 +166,14 @@ def iniciar_lobby(contexto):
     tiempo_inicio_juego = time.time()
 
 def generar_personas_lobby():
-    global total_discapacitados_generados
+    global total_discapacitados
+    global total_trabajadores
+    global total_discapacitados_generados  # <-- Agrega esta línea
     total = 20
     max_obesos = 3
     personas = []
     obesos = 0
-    global total_trabajadores
-    
+
     while len(personas) < total:
         p = random.choice([PersonaDiscapacitada, PersonaObesa, PersonaTrabajador, PersonaCliente])()
         if isinstance(p, PersonaObesa) and obesos >= max_obesos:
@@ -540,13 +542,83 @@ def seleccionar():
         else:
             mostrar_mensaje_en_pantalla("Sin espacio suficiente en el elevador", 2)
 
+def mostrar_pantalla_gameover_denuncias(contexto, porcentaje, tiempo_str):
+    """Muestra la pantalla de Game Over por denuncias y abre el enlace de la ley de igualdad"""
+    screen = contexto["screen"]
+    fuente_led = contexto["fuente_led"]
+    ANCHO = contexto["ANCHO"]
+    ALTO = contexto["ALTO"]
+    COLORES = contexto["COLORES"]
+    # Usa fuente más pequeña para el mensaje de denuncia
+    fuente_pequena = contexto.get("fuente_pequena", pygame.font.SysFont("Courier New", 22, bold=True))
+
+    # Cargar imagen de fondo de game over
+    try:
+        fondo_img = pygame.image.load("assets/gameover.png").convert()
+        fondo_img = pygame.transform.scale(fondo_img, (ANCHO, ALTO))
+    except Exception as e:
+        fondo_img = pygame.Surface((ANCHO, ALTO))
+        fondo_img.fill((0, 0, 0))
+
+    screen.blit(fondo_img, (0, 0))
+
+    mensaje1 = "Has perdido, recibiste dos denuncias"
+    mensaje2 = "por discriminación."
+    mensaje3 = f"Personas atendidas: {porcentaje}%"
+    mensaje4 = tiempo_str
+
+    # Mensaje de denuncia en fuente pequeña
+    text1 = fuente_pequena.render(mensaje1, True, COLORES["error"])
+    text2 = fuente_pequena.render(mensaje2, True, COLORES["error"])
+    # Estadísticas en fuente grande
+    text3 = fuente_led.render(mensaje3, True, COLORES["texto_activo"])
+    text4 = fuente_led.render(mensaje4, True, COLORES["texto_activo"])
+
+    y_centro = ALTO // 2
+    # Mensaje de derrota en dos líneas, más abajo para evitar los bordes
+    screen.blit(text1, (ANCHO // 2 - text1.get_width() // 2, y_centro + 30))
+    screen.blit(text2, (ANCHO // 2 - text2.get_width() // 2, y_centro + 65))
+    # Estadísticas debajo
+    screen.blit(text3, (ANCHO // 2 - text3.get_width() // 2, y_centro + 120))
+    screen.blit(text4, (ANCHO // 2 - text4.get_width() // 2, y_centro + 180))
+    pygame.display.flip()
+
+    # Esperar 5.5 segundos
+    pygame.time.wait(5500)
+
+    # Abrir el enlace de la ley de igualdad de oportunidades
+    webbrowser.open("https://www.tse.go.cr/pdf/normativa/leyigualdaddeoportunidades.pdf")
+
 def actualizar_estado_lobby():
-    """Actualiza el estado del lobby, incluyendo la verificación de trabajadores enojados"""
+    """Actualiza el estado del lobby, incluyendo la verificación de trabajadores enojados y denuncias"""
     global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby, puntos, mala_reputacion, game_over
-    
+    global denuncias
+
+    hay_discapacitados = any(isinstance(p, PersonaDiscapacitada) for p in personas_lobby)
+    if denuncias >= 2 and not game_over and hay_discapacitados:
+        game_over = True
+        # Mostrar pantalla especial de game over por denuncias
+        personas_atendidas = total_personas_inicial - len(personas_lobby)
+        porcentaje = 0
+        if total_personas_inicial > 0:
+            porcentaje = int((personas_atendidas / total_personas_inicial) * 100)
+        tiempo_total = int(time.time() - tiempo_inicio_juego)
+        minutos = tiempo_total // 60
+        segundos = tiempo_total % 60
+        tiempo_str = f"Tiempo: {minutos:02d}:{segundos:02d}"
+        contexto = {
+            "screen": screen,
+            "fuente_led": pygame.font.SysFont("Courier New", 48, bold=True),
+            "ANCHO": ANCHO,
+            "ALTO": ALTO,
+            "COLORES": COLORES,
+        }
+        mostrar_pantalla_gameover_denuncias(contexto, porcentaje, tiempo_str)
+        return
+
     # Lista para almacenar los índices de trabajadores a eliminar
     trabajadores_a_eliminar = []
-    
+
     # Verificar cada persona en el lobby
     for i, persona in enumerate(personas_lobby):
         # Verificar si es un trabajador con temporizador
@@ -554,7 +626,7 @@ def actualizar_estado_lobby():
             # Actualizar el temporizador y verificar si terminó
             if persona.temporizador.actualizar():
                 trabajadores_a_eliminar.append(i)
-    
+
     # Eliminar trabajadores y aplicar penalizaciones
     for i in reversed(trabajadores_a_eliminar):
         if i < len(personas_lobby):
@@ -562,20 +634,20 @@ def actualizar_estado_lobby():
             # Aplicar penalización
             puntos -= 4
             mostrar_mensaje_en_pantalla(f"{persona.nombre} se fue molesto (-4)", 3)
-            
+
             # Incrementar mala reputación
             mala_reputacion += 1
-            
+
             # Eliminar de las listas
             personas_lobby.pop(i)
             posiciones_personas_lobby.pop(i)
-            
+
             # Ajustar índice de selección si es necesario
             if persona_seleccionada_lobby > i:
                 persona_seleccionada_lobby -= 1
             elif persona_seleccionada_lobby == i and persona_seleccionada_lobby >= len(personas_lobby):
                 persona_seleccionada_lobby = max(0, len(personas_lobby) - 1)
-    
+
     # Verificar si se alcanzó el límite de mala reputación
     if mala_reputacion >= limite_mala_reputacion:
         game_over = True
@@ -635,7 +707,7 @@ def mostrar_mensaje_en_pantalla(texto, duracion=2):
     cola_mensajes.append((texto, duracion))
     print(f"[MENSAJE] Mensaje agregado a la cola: '{texto}' (dura {duracion}s)")
 
-def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str):
+def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str, por_denuncias=False):
     import pygame
     import sys
 
@@ -671,6 +743,9 @@ def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str):
         txt_result = font.render(f"Fracaso ({porcentaje}%)", True, (255, 0, 0))
     txt_tiempo = font.render(tiempo_str, True, (255, 255, 255))
 
+    # Fuente pequeña para el mensaje de denuncia
+    fuente_pequena = pygame.font.SysFont("Courier New", 22, bold=True)
+
     esperando = True
     while esperando:
         for event in pygame.event.get():
@@ -691,7 +766,6 @@ def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str):
                     sys.exit()
 
         screen.blit(fondo_img, (0, 0))
-        # No mostrar los textos de los botones, solo el área de clic sigue activa
         # Centrar los textos en la pantalla
         screen.blit(
             txt_result,
@@ -701,5 +775,16 @@ def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str):
             txt_tiempo,
             (ANCHO // 2 - txt_tiempo.get_width() // 2, ALTO // 2 + 10)
         )
+
+        # Si fue por denuncias, mostrar el mensaje en dos líneas debajo del tiempo, en fuente pequeña y color de error
+        if por_denuncias:
+            mensaje1 = "Has perdido, recibiste dos denuncias"
+            mensaje2 = "por discriminación."
+            text1 = fuente_pequena.render(mensaje1, True, (255, 50, 50))
+            text2 = fuente_pequena.render(mensaje2, True, (255, 50, 50))
+            y_base = ALTO // 2 + 80
+            screen.blit(text1, (ANCHO // 2 - text1.get_width() // 2, y_base))
+            screen.blit(text2, (ANCHO // 2 - text2.get_width() // 2, y_base + 30))
+
         pygame.display.flip()
         clock.tick(30)
