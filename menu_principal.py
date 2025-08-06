@@ -117,3 +117,4 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
 
         pygame.display.flip()
         clock.tick(60)
+

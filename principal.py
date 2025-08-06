@@ -41,7 +41,6 @@ panel_surface_oscura.fill((0, 0, 0, 140))
 def mostrar_mensaje_temporal(texto, tipo):
     print(f"[{tipo.upper()}] {texto}")
 
-
 # Bandera global para controlar el ciclo principal
 salir_del_juego = False
 
@@ -49,7 +48,6 @@ def volver_al_menu_principal():
     global salir_del_juego
     # Simplemente retorna el control al ciclo principal
     pass
-
 
 # Bucle principal del juego
 while not salir_del_juego:
@@ -61,6 +59,8 @@ while not salir_del_juego:
         elevador = Elevador()
         fondo_lobby = pygame.image.load("assets/lobby.png").convert()
         fondo_lobby = pygame.transform.scale(fondo_lobby, (ANCHO, ALTO))
+        fondo_pos_x_lobby = 0
+        fondo_pos_y_lobby = 0
 
         temporizador_gameplay = TemporizadorGameplay()
 
@@ -88,8 +88,44 @@ while not salir_del_juego:
 
         lobby.iniciar_lobby(contexto)
         lobby.bucle_lobby()
+    elif accion == "config":
+        # Simple configuration menu implementation
+        volumen_activo = True
+        
+        # Simple configuration loop
+        config_running = True
+        while config_running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    salir_del_juego = True
+                    config_running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        config_running = False
+                    elif event.key == pygame.K_RETURN:
+                        # Toggle volumen
+                        volumen_activo = not volumen_activo
+                        if volumen_activo:
+                            pygame.mixer.music.set_volume(1.0)
+                            print("Volumen activado")
+                        else:
+                            pygame.mixer.music.set_volume(0.0)
+                            print("Volumen desactivado")
+                    elif event.key == pygame.K_BACKSPACE:
+                        config_running = False
+            
+            # Simple display
+            screen.fill((30, 30, 40))
+            title = fuente.render("CONFIGURACION", True, (0, 255, 100))
+            screen.blit(title, (ANCHO//2 - title.get_width()//2, 100))
+            
+            estado = fuente.render(f"Volumen: {'ACTIVADO' if volumen_activo else 'DESACTIVADO'}", True, (255, 255, 255))
+            screen.blit(estado, (ANCHO//2 - estado.get_width()//2, 250))
+            
+            instructions = fuente.render("ENTER: Cambiar volumen | ESC: Volver", True, (200, 200, 200))
+            screen.blit(instructions, (ANCHO//2 - instructions.get_width()//2, 350))
+            
+            pygame.display.flip()
+            clock.tick(60)
     elif accion == "salir":
         salir_del_juego = True
-    else:
-        print(f"Acción cancelada o no reconocida: {accion}")
-
