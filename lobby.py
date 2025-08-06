@@ -165,6 +165,9 @@ def iniciar_lobby(contexto):
     persona_seleccionada_lobby = 0
     tiempo_inicio_juego = time.time()
 
+    pygame.mixer.music.load("assets/soundtrack.mp3")
+    pygame.mixer.music.play(-1)  # -1 para bucle infinito
+
 def generar_personas_lobby():
     global total_discapacitados
     global total_trabajadores
@@ -544,6 +547,7 @@ def seleccionar():
 
 def mostrar_pantalla_gameover_denuncias(contexto, porcentaje, tiempo_str):
     """Muestra la pantalla de Game Over por denuncias y abre el enlace de la ley de igualdad"""
+    pygame.mixer.music.stop()  # Detener soundtrack al mostrar Game Over
     screen = contexto["screen"]
     fuente_led = contexto["fuente_led"]
     ANCHO = contexto["ANCHO"]
@@ -710,6 +714,8 @@ def mostrar_mensaje_en_pantalla(texto, duracion=2):
 def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str, por_denuncias=False):
     import pygame
     import sys
+
+    pygame.mixer.music.stop()
 
     screen = contexto["screen"]
     ANCHO = contexto["ANCHO"]
