@@ -38,23 +38,45 @@ game_over = False  # Indica si el juego ha terminado
 game_over_img = None  # Imagen de Game Over
 temporizador_gameplay = None
 
+# Variables para el sistema de éxito
+total_personas_inicial = 0  # Total de personas al inicio del juego
+tiempo_inicio_juego = 0    # Tiempo cuando inicia el juego
+
 # 🎯 ZONA EDITABLE DE PERSPECTIVA
 Y_PISO_MIN = 450
 Y_PISO_MAX = 500
 SEPARACION_MINIMA = 35
 def reiniciar_juego():
     """Reinicia todas las variables del juego"""
-    global puntos, mala_reputacion, total_trabajadores, limite_mala_reputacion
+    # Declarar todas las variables globales al inicio
+    global mala_reputacion, game_over, temporizador_gameplay, total_personas_inicial
+    global tiempo_inicio_juego, total_trabajadores, puntos, limite_mala_reputacion
     global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
     global cola_mensajes, mensaje_actual, tiempo_fin_mensaje, tiempo_espera_entre_mensajes
-    global game_over, elevador
+    global elevador
     
-    # Reiniciar variables de puntaje y reputación
-    puntos = 0
+    # Reiniciar variables de juego
     mala_reputacion = 0
-    total_trabajadores = 0
-    limite_mala_reputacion = 5
     game_over = False
+    temporizador_gameplay = None
+    total_personas_inicial = 0
+    tiempo_inicio_juego = time.time()
+    total_trabajadores = 0
+    puntos = 0
+    limite_mala_reputacion = 5
+    
+    # Reiniciar listas
+    personas_lobby = []
+    posiciones_personas_lobby = []
+    cola_mensajes = []
+    
+    # Reiniciar variables de estado
+    persona_seleccionada_lobby = 0
+    mensaje_actual = ""
+    tiempo_fin_mensaje = 0
+    tiempo_espera_entre_mensajes = 0.5
+    
+    print("🔄 Juego reiniciado completamente")
     
     # Limpiar listas de personas
     personas_lobby = []
@@ -92,6 +114,7 @@ def iniciar_lobby(contexto):
     global fondo_lobby, fondo_pos_x_lobby, fondo_pos_y_lobby
     global volver_al_menu_principal, temporizador_gameplay
     global game_over, game_over_img, mala_reputacion, total_trabajadores, limite_mala_reputacion
+    global total_personas_inicial, tiempo_inicio_juego
     
     # === REINICIO COMPLETO DEL JUEGO ===
     reiniciar_juego()
@@ -129,8 +152,9 @@ def iniciar_lobby(contexto):
     if temporizador_gameplay:
         temporizador_gameplay.iniciar()
 
-    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby
+    global personas_lobby, posiciones_personas_lobby, persona_seleccionada_lobby, total_personas_inicial
     personas_lobby = generar_personas_lobby()
+    total_personas_inicial = len(personas_lobby)
     posiciones_personas_lobby = distribuir_personas_lobby(personas_lobby)
     persona_seleccionada_lobby = 0
 
@@ -223,8 +247,7 @@ def iniciar_animacion_ascensor():
     print("🎬 CAMBIO A MODO ASCENSOR")
 
 def bucle_lobby():
-    global mensaje_temporal, tiempo_mensaje, game_over
-
+    global mensaje_temporal, tiempo_mensaje, game_over, total_personas_inicial, tiempo_inicio_juego
     ejecutando = True
     clock = pygame.time.Clock()
 
@@ -251,9 +274,42 @@ def bucle_lobby():
                 if event.type == pygame.USEREVENT + 10:
                     print("✅ USEREVENT + 10 recibido")
                     estado_juego["modo"] = "lobby"
+                    # Al regresar al lobby, si el lobby y el elevador están vacíos, mostrar completado
+                    if len(personas_lobby) == 0 and elevador and hasattr(elevador, 'personas_dentro') and len(elevador.personas_dentro) == 0 and not game_over:
+                        game_over = True
+                        contexto = {
+                            "screen": screen,
+                            "fuente_led": pygame.font.SysFont("Courier New", 48, bold=True),
+                            "ANCHO": ANCHO,
+                            "ALTO": ALTO,
+                            "COLORES": COLORES,
+                            "clock": pygame.time.Clock()
+                        }
+                        personas_atendidas = total_personas_inicial
+                        porcentaje = 100  # 100% porque todas las personas fueron atendidas
+                        tiempo_total = int(time.time() - tiempo_inicio_juego)
+                        minutos = tiempo_total // 60
+                        segundos = tiempo_total % 60
+                        tiempo_str = f"Tiempo: {minutos:02d}:{segundos:02d}"
+                        resultado = mostrar_pantalla_final(contexto, 'completado', porcentaje, tiempo_str)
+                        if resultado == "menu":
+                            volver_al_menu_principal()
+                        elif resultado == "salir":
+                            import sys
+                            sys.exit()
+                        ejecutando = False
+                        return
 
         # Manejar Game Over por reputación
         if game_over:
+            personas_atendidas = total_personas_inicial - len(personas_lobby)
+            porcentaje = 0
+            if total_personas_inicial > 0:
+                porcentaje = int((personas_atendidas / total_personas_inicial) * 100)
+            tiempo_total = int(time.time() - tiempo_inicio_juego)
+            minutos = tiempo_total // 60
+            segundos = tiempo_total % 60
+            tiempo_str = f"Tiempo: {minutos:02d}:{segundos:02d}"
             contexto = {
                 "screen": screen,
                 "fuente_led": pygame.font.SysFont("Courier New", 48, bold=True),
@@ -262,7 +318,8 @@ def bucle_lobby():
                 "COLORES": COLORES,
                 "clock": pygame.time.Clock()
             }
-            resultado = mostrar_game_over(contexto)
+            tipo_final = 'completado' if porcentaje > 50 else 'gameover'
+            resultado = mostrar_pantalla_final(contexto, tipo_final, porcentaje, tiempo_str)
             if resultado == "menu":
                 volver_al_menu_principal()
             elif resultado == "salir":
@@ -275,6 +332,8 @@ def bucle_lobby():
         if estado_juego["modo"] == "lobby" and not game_over:
             actualizar_estado_lobby()
             
+            # Ya no se verifica victoria aquí, solo cuando el ascensor y el lobby estén vacíos
+
             # Verificar temporizador de gameplay
             if temporizador_gameplay:
                 terminado = temporizador_gameplay.actualizar()
@@ -291,7 +350,24 @@ def bucle_lobby():
                         "COLORES": COLORES,
                         "clock": pygame.time.Clock()
                     }
-                    resultado = mostrar_game_over(contexto)
+                    # Calcular porcentaje y tiempo
+                    personas_atendidas = total_personas_inicial - len(personas_lobby)
+                    porcentaje = 0
+                    if total_personas_inicial > 0:
+                        porcentaje = int((personas_atendidas / total_personas_inicial) * 100)
+                    tiempo_total = int(time.time() - tiempo_inicio_juego)
+                    minutos = tiempo_total // 60
+                    segundos = tiempo_total % 60
+                    tiempo_str = f"Tiempo: {minutos:02d}:{segundos:02d}"
+                    contexto = {
+                        "screen": screen,
+                        "fuente_led": pygame.font.SysFont("Courier New", 48, bold=True),
+                        "ANCHO": ANCHO,
+                        "ALTO": ALTO,
+                        "COLORES": COLORES,
+                        "clock": pygame.time.Clock()
+                    }
+                    resultado = mostrar_pantalla_final(contexto, 'gameover', porcentaje, tiempo_str)
                     if resultado == "menu":
                         volver_al_menu_principal()
                     elif resultado == "salir":
@@ -528,7 +604,7 @@ def mostrar_mensaje_en_pantalla(texto, duracion=2):
     cola_mensajes.append((texto, duracion))
     print(f"[MENSAJE] Mensaje agregado a la cola: '{texto}' (dura {duracion}s)")
 
-def mostrar_game_over(contexto):
+def mostrar_pantalla_final(contexto, tipo, porcentaje, tiempo_str):
     import pygame
     import sys
 
@@ -537,18 +613,32 @@ def mostrar_game_over(contexto):
     ALTO = contexto["ALTO"]
     clock = contexto["clock"]
 
-    # Cargar la imagen de Game Over
+    # Cargar la imagen correspondiente
+    if tipo == 'completado':
+        img_path = "assets/completado.png"
+    else:
+        img_path = "assets/gameover.png"
     try:
-        game_over_img = pygame.image.load("assets/gameover.png").convert_alpha()
-        game_over_img = pygame.transform.scale(game_over_img, (ANCHO, ALTO))
+        fondo_img = pygame.image.load(img_path).convert_alpha()
+        fondo_img = pygame.transform.scale(fondo_img, (ANCHO, ALTO))
     except Exception as e:
-        print(f"[ERROR] No se pudo cargar gameover.png: {e}")
+        print(f"[ERROR] No se pudo cargar {img_path}: {e}")
         return
 
-    # Botón izquierdo: Volver al menú principal (verde, más alargado)
-    rect_menu = pygame.Rect(80, 500, 410, 60)   # Izquierda y más ancho
-    # Botón derecho: Salir (rojo, más alargado)
-    rect_salir = pygame.Rect(542, 500, 275, 60) # Derecha y más ancho
+    # Botón izquierdo: Volver al menú principal
+    rect_menu = pygame.Rect(110, 505, 360, 55)
+    # Botón derecho: Salir
+    rect_salir = pygame.Rect(545, 505, 275, 55)
+
+    # Texto de resultado
+    font = pygame.font.SysFont(None, 60)
+    if porcentaje >= 90:
+        txt_result = font.render(f"Éxito ALTO ({porcentaje}%)", True, (0, 255, 0))
+    elif porcentaje > 50:
+        txt_result = font.render(f"Éxito MEDIO ({porcentaje}%)", True, (255, 255, 0))
+    else:
+        txt_result = font.render(f"Fracaso ({porcentaje}%)", True, (255, 0, 0))
+    txt_tiempo = font.render(tiempo_str, True, (255, 255, 255))
 
     esperando = True
     while esperando:
@@ -569,6 +659,16 @@ def mostrar_game_over(contexto):
                     esperando = False
                     sys.exit()
 
-        screen.blit(game_over_img, (0, 0))
+        screen.blit(fondo_img, (0, 0))
+        # No mostrar los textos de los botones, solo el área de clic sigue activa
+        # Centrar los textos en la pantalla
+        screen.blit(
+            txt_result,
+            (ANCHO // 2 - txt_result.get_width() // 2, ALTO // 2 - txt_result.get_height())
+        )
+        screen.blit(
+            txt_tiempo,
+            (ANCHO // 2 - txt_tiempo.get_width() // 2, ALTO // 2 + 10)
+        )
         pygame.display.flip()
         clock.tick(30)

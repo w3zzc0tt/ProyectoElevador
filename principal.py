@@ -92,3 +92,4 @@ while not salir_del_juego:
         salir_del_juego = True
     else:
         print(f"Acción cancelada o no reconocida: {accion}")
+
