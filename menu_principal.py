@@ -22,7 +22,7 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
     ascensor_color = COLORES["ascensor"]
     ascensor_y_animado = ascensor_y
 
-    menus = ["1. Jugar", "2. Config", "3. Salir"]
+    menus = ["1. Jugar", "2. R & T", "3. Config", "4. Salir"]
     opcion_seleccionada = 0
 
     while True:
@@ -41,10 +41,12 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
                         print("⏹️ Música del menú detenida al iniciar el juego")
                         return "FACIL"
                     elif opcion_seleccionada == 1:
-                        return "config"
+                        return "reglas"
                     elif opcion_seleccionada == 2:
+                        return "config"
+                    elif opcion_seleccionada == 3:
                         return "salir"
-                elif pygame.K_1 <= event.key <= pygame.K_3:
+                elif pygame.K_1 <= event.key <= pygame.K_4:
                     indice = event.key - pygame.K_1
                     if indice < len(menus):
                         opcion_seleccionada = indice
@@ -53,8 +55,10 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
                             print("⏹️ Música del menú detenida al iniciar el juego")
                             return "FACIL"
                         elif indice == 1:
-                            return "config"
+                            return "reglas"
                         elif indice == 2:
+                            return "config"
+                        elif indice == 3:
                             return "salir"
             elif event.type == pygame.MOUSEMOTION:
                 mouse_x, mouse_y = event.pos
@@ -69,8 +73,10 @@ def manejar_menu(screen, COLORES, fuente, fuente_led, panel_surface_oscura, ANCH
                         print("⏹️ Música del menú detenida al iniciar el juego")
                         return "FACIL"
                     elif opcion_seleccionada == 1:
-                        return "config"
+                        return "reglas"
                     elif opcion_seleccionada == 2:
+                        return "config"
+                    elif opcion_seleccionada == 3:
                         return "salir"
 
         # Dibujar fondo completo y capa oscura

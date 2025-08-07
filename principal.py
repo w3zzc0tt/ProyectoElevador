@@ -3,6 +3,7 @@ from menu_principal import manejar_menu
 import lobby
 from elevador import Elevador
 from temporizadores import TemporizadorGameplay
+from reglas_tutorial import mostrar_reglas_tutorial
 pygame.init()
 
 ANCHO, ALTO = 900, 600
@@ -127,5 +128,9 @@ while not salir_del_juego:
             
             pygame.display.flip()
             clock.tick(60)
+    elif accion == "reglas":
+        resultado = mostrar_reglas_tutorial(screen, COLORES, fuente, fuente_pequena, fuente_mediana, ANCHO, ALTO, clock)
+        if resultado == "salir":
+            salir_del_juego = True
     elif accion == "salir":
         salir_del_juego = True
